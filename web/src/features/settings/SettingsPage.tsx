@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, ApiError, type Role, type Settings } from '@/api/client'
 import { useSession } from '@/auth/session'
 import { Avatar, Button, Card, ConfirmButton, Field, Heading, Input, Notice, Spinner, Toggle } from '@/components/ui'
@@ -46,6 +46,7 @@ function OrgSettings({ org }: { org: Org }) {
         <>
           <General org={org} season={season} />
           <Invite org={org} />
+          <Slack org={org} />
           <Card className="flex flex-col gap-4">
             <Heading>{t('settings.award')}</Heading>
             <p className="text-sm text-muted">{t('settings.awardHint')}</p>
@@ -164,6 +165,73 @@ function Invite({ org }: { org: Org }) {
           </Button>
         ) : null}
       </div>
+    </Card>
+  )
+}
+
+const OUTCOMES = ['connected', 'cancelled', 'taken', 'error'] as const
+type Outcome = (typeof OUTCOMES)[number]
+
+/** Connecting a Slack workspace (docs/decisions/slack.md). Shown once the API has Slack set up. */
+function Slack({ org }: { org: Org }) {
+  const { t } = useI18n()
+  const [available, setAvailable] = useState<boolean>()
+  const [busy, setBusy] = useState(false)
+  const { problem, run } = useAction()
+  // Slack sends the admin back with ?slack=<outcome>; say it once and tidy the address.
+  const [outcome] = useState<Outcome | undefined>(() => {
+    const value = new URLSearchParams(window.location.search).get('slack')
+    return OUTCOMES.find((item) => item === value)
+  })
+  useEffect(() => {
+    if (outcome) window.history.replaceState(null, '', window.location.pathname)
+    api.health().then((health) => setAvailable(Boolean(health.slack)))
+  }, [outcome])
+  if (!available && !org.slack && !outcome) return null
+  return (
+    <Card className="flex flex-col gap-4">
+      <Heading>{t('slack.title')}</Heading>
+      {outcome ? <Notice tone={outcome === 'connected' ? 'done' : outcome === 'cancelled' ? 'info' : 'error'}>{t(`slack.outcome.${outcome}`)}</Notice> : null}
+      {org.slack ? (
+        <>
+          <p className="font-semibold">{t('slack.connected', { name: org.slack.teamName })}</p>
+          <p className="text-sm text-muted">{t('slack.howTo')}</p>
+          <Toggle checked={org.slack.announce} onChange={(value) => run(() => api.slackAnnounce(org.id, value))} label={t('slack.announce')} />
+          {problem ? <Notice tone="error">{problem}</Notice> : null}
+          <div>
+            <ConfirmButton
+              label={t('slack.disconnect')}
+              question={t('slack.disconnectConfirm', { name: org.slack.teamName })}
+              confirmLabel={t('slack.disconnect')}
+              cancelLabel={t('common.cancel')}
+              onConfirm={() => run(() => api.slackDisconnect(org.id))}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-muted">{t('slack.hint')}</p>
+          {problem ? <Notice tone="error">{problem}</Notice> : null}
+          {available ? (
+            <div>
+              <Button
+                busy={busy}
+                onClick={async () => {
+                  setBusy(true)
+                  let url = ''
+                  await run(async () => {
+                    url = (await api.slackInstall(org.id)).url
+                  })
+                  if (url) window.location.assign(url)
+                  else setBusy(false)
+                }}
+              >
+                {t('slack.add')}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
     </Card>
   )
 }

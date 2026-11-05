@@ -44,6 +44,24 @@ In the repository, Settings → Secrets and variables → Actions.
 
 Then Actions → Deploy → Run workflow, or merge anything to `main`.
 
+## 4. Slack (optional)
+
+Without this, the app works as before and the Slack section stays hidden (`docs/decisions/slack.md`).
+
+1. At api.slack.com/apps → Create New App → **From a manifest**, pick a workspace of yours (it is only where the app is managed), and paste `slack/manifest.json`. If the Worker's address is not `kudocoin-api.lucas-simao01.workers.dev`, change it in both URLs first.
+2. **Basic Information → App Credentials**: copy the **Client ID**, the **Client Secret** and the **Signing Secret**.
+3. **Manage Distribution → Activate Public Distribution**, so other workspaces can add the app. It does not need to be listed in Slack's directory.
+4. In GitHub, add:
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Variable | `SLACK_CLIENT_ID` | The Client ID |
+| Secret | `SLACK_CLIENT_SECRET` | The Client Secret |
+| Secret | `SLACK_SIGNING_SECRET` | The Signing Secret |
+| Secret | `SLACK_KEY` | A long random string, for example from `openssl rand -base64 32`. Changing it later disconnects every workspace and invalidates open links. |
+
+5. Run the deploy again. Settings → Slack → *Add to Slack* in any organization connects a workspace.
+
 ## After
 
 - The Worker's address appears in the deploy log and in the app's build; the app talks to it directly.

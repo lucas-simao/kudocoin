@@ -49,7 +49,8 @@ service cloud.firestore {
       }
     }
 
-    // slugs/ and invites/ are read only by the Worker; nothing else is open.
+    // slugs/, invites/, slackTeams/ and slackUsers/ are read only by the Worker (docs/decisions/slack.md);
+    // nothing else is open.
     match /{document=**} {
       allow read, write: if false;
     }

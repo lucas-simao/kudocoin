@@ -18,7 +18,7 @@ The first release is the smallest thing a group can play with for a whole season
 ## Out, on purpose
 
 - GitHub awards for pull requests and reviews (next, `docs/decisions/github-awards.md` when it is written).
-- Slack and Discord bots.
+- Discord, and Slack beyond `/kudos` (`docs/decisions/slack.md`).
 - Email or push notifications.
 - Custom domains per organization.
 - Anything paid.

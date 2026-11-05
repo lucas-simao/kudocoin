@@ -18,7 +18,7 @@ Gratuito e de código aberto. Um servidor público atende todo mundo: entre com 
 
 1. Crie uma organização e defina as regras: o nome da moeda, quantas cada membro pode dar por dia, o máximo numa doação, quanto uma pessoa pode receber por dia, quando a temporada termina e qual é o prêmio.
 2. Compartilhe o link de convite no chat do grupo.
-3. Dê moedas com um motivo: "revisou meu PR às 23h". A sua cota do dia aparece enquanto você doa.
+3. Dê moedas com um motivo: "revisou meu PR às 23h". A sua cota do dia aparece enquanto você doa. Com o Slack ligado, `/kudos @ana 2 revisou meu PR` faz o mesmo sem sair da conversa.
 4. Acompanhe o placar. No último dia, um admin fecha a temporada, a classificação final fica guardada e todo mundo recomeça do zero.
 
 Em português, inglês e espanhol.

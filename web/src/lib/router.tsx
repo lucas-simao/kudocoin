@@ -11,6 +11,8 @@ export type Route =
   | { name: 'settings'; slug: string }
   | { name: 'join'; token: string }
   | { name: 'account' }
+  /** Where a Slack person confirms linking their account; the token is in ?t= (docs/decisions/slack.md). */
+  | { name: 'slackLink' }
   | { name: 'missing' }
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,128}$/
@@ -23,6 +25,7 @@ export function parse(pathname: string): Route {
   if (first === 'orgs' && parts.length === 1) return { name: 'orgs' }
   if (first === 'new' && parts.length === 1) return { name: 'new' }
   if (first === 'account' && parts.length === 1) return { name: 'account' }
+  if (first === 'slack' && second === 'link' && parts.length === 2) return { name: 'slackLink' }
   if (first === 'join' && parts.length === 2) return { name: 'join', token: second }
   if (first === 'o' && parts.length === 2) return { name: 'org', slug: second }
   if (first === 'o' && third === 'settings' && parts.length === 3) return { name: 'settings', slug: second }
@@ -40,6 +43,8 @@ export function href(route: Route): string {
       return '/new'
     case 'account':
       return '/account'
+    case 'slackLink':
+      return '/slack/link'
     case 'join':
       return `/join/${route.token}`
     case 'org':

@@ -20,6 +20,10 @@ export type ErrorCode =
   | 'last_owner'
   | 'too_many_requests'
   | 'conflict'
+  | 'slack_unavailable'
+  | 'slack_link_invalid'
+  | 'slack_not_connected'
+  | 'slack_not_member'
   | 'internal'
 
 const STATUS: Record<ErrorCode, number> = {
@@ -43,6 +47,10 @@ const STATUS: Record<ErrorCode, number> = {
   last_owner: 422,
   too_many_requests: 429,
   conflict: 409,
+  slack_unavailable: 503,
+  slack_link_invalid: 404,
+  slack_not_connected: 404,
+  slack_not_member: 422,
   internal: 500,
 }
 

@@ -36,11 +36,17 @@ jobs:
       - name: The service account, for Firestore and the Worker
         env:
           SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # Slack is optional (docs/decisions/slack.md): without these three, the Worker keeps Slack off.
+          SLACK_CLIENT_SECRET: ${{ secrets.SLACK_CLIENT_SECRET }}
+          SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+          SLACK_KEY: ${{ secrets.SLACK_KEY }}
         run: |
           printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
           node -e '
             const sa = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
-            require("fs").writeFileSync(process.argv[2], JSON.stringify({ FIREBASE_CLIENT_EMAIL: sa.client_email, FIREBASE_PRIVATE_KEY: sa.private_key }))
+            const secrets = { FIREBASE_CLIENT_EMAIL: sa.client_email, FIREBASE_PRIVATE_KEY: sa.private_key }
+            for (const name of ["SLACK_CLIENT_SECRET", "SLACK_SIGNING_SECRET", "SLACK_KEY"]) if (process.env[name]) secrets[name] = process.env[name]
+            require("fs").writeFileSync(process.argv[2], JSON.stringify(secrets))
           ' "$RUNNER_TEMP/service-account.json" "$RUNNER_TEMP/worker-secrets.json"
 
       - name: Firestore rules and indexes
@@ -51,8 +57,12 @@ jobs:
 
       - name: Worker
         working-directory: worker
+        env:
+          SLACK_CLIENT_ID: ${{ vars.SLACK_CLIENT_ID }}
         run: |
-          npx wrangler deploy --var "FIREBASE_PROJECT_ID:$FIREBASE_PROJECT_ID" --var "ALLOWED_ORIGINS:$APP_ORIGIN" | tee "$RUNNER_TEMP/worker.log"
+          vars=(--var "FIREBASE_PROJECT_ID:$FIREBASE_PROJECT_ID" --var "ALLOWED_ORIGINS:$APP_ORIGIN")
+          if [ -n "$SLACK_CLIENT_ID" ]; then vars+=(--var "SLACK_CLIENT_ID:$SLACK_CLIENT_ID"); fi
+          npx wrangler deploy "${vars[@]}" | tee "$RUNNER_TEMP/worker.log"
           npx wrangler secret bulk "$RUNNER_TEMP/worker-secrets.json"
           url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' "$RUNNER_TEMP/worker.log" | head -1)
           test -n "$url"
