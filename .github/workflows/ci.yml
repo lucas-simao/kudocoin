@@ -25,8 +25,7 @@ jobs:
       - run: npm test
       - run: npx wrangler deploy --dry-run --outdir dist
       # Until a lockfile is committed, print the one npm made, for copying into the repository.
-      - if: hashFiles('worker/package-lock.json') == ''
-        run: echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
+      - run: git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 || echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
 
   rules:
     runs-on: ubuntu-latest
@@ -45,5 +44,4 @@ jobs:
       - run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
       - run: npm test
       # Until a lockfile is committed, print the one npm made, for copying into the repository.
-      - if: hashFiles('firebase/package-lock.json') == ''
-        run: echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
+      - run: git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 || echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
