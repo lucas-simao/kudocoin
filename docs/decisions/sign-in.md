@@ -14,7 +14,7 @@ Kudocoin should hold no passwords: fewer things to protect, nothing to reset. It
 
 **What we keep about a person**, in `users/{uid}`: the display name, the picture's URL, the GitHub login when they signed in with GitHub, and the chosen language. Not the email, which Firebase already holds for sign-in and Kudocoin never shows or sends.
 
-**Deleting an account** removes the person from every organization, replaces their name in past ledger entries with "Former member", and deletes their Firebase user. The ledger's amounts stay, so the other members' balances still add up.
+**Deleting an account** removes the person from every organization, clears their name from past ledger entries (the app shows "former member" in the reader's language), and deletes their Firebase user. The ledger's amounts stay, so the other members' balances still add up.
 
 ## Consequences
 

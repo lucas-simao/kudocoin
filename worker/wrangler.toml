@@ -1,0 +1,22 @@
+# The API. Free plan only: docs/decisions/zero-cost-hosting.md.
+name = "kudocoin-api"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[vars]
+# The Firebase project whose sign-in tokens are accepted and whose Firestore is written.
+FIREBASE_PROJECT_ID = "kudocoin"
+# Where the web app runs, for CORS. A comma-separated list.
+ALLOWED_ORIGINS = "https://kudocoin.pages.dev"
+
+# Secrets, set with `wrangler secret put`:
+#   FIREBASE_CLIENT_EMAIL  the service account's email
+#   FIREBASE_PRIVATE_KEY   its private key (PEM, with \n kept)
+
+# Local development against the Firebase emulators (make dev). Never set these in production.
+[env.dev.vars]
+FIREBASE_PROJECT_ID = "demo-kudocoin"
+ALLOWED_ORIGINS = "http://localhost:18610"
+FIRESTORE_EMULATOR_HOST = "127.0.0.1:18613"
+AUTH_EMULATOR = "true"
