@@ -8,7 +8,7 @@ Kudocoin should hold no passwords: fewer things to protect, nothing to reset. It
 
 ## Decision
 
-**Firebase Authentication** with two providers, GitHub and Google, in a popup on desktop and a redirect on phones. One person signing in with both, under the same email, is one account (Firebase links them).
+**Firebase Authentication** with two providers, GitHub and Google, in a popup on every device. A redirect would need the app and Firebase's sign-in page (`<project>.firebaseapp.com`) on one domain, or Safari blocks the storage it relies on; with the app on `pages.dev`, the popup is the one that works everywhere. One person signing in with both, under the same email, is one account (Firebase links them).
 
 **The Worker trusts only the Firebase ID token.** Every API request carries it as `Authorization: Bearer`. The Worker checks its signature against Google's published keys, the issuer and audience of our Firebase project, and that it has not expired, then takes the user id from it. A request without a valid token gets 401.
 

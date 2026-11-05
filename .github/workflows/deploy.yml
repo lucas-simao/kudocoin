@@ -1,0 +1,76 @@
+name: Deploy
+
+# Each merge to main publishes the Firestore rules, the Worker and the web app, all on free plans
+# (docs/decisions/zero-cost-hosting.md). The one-time setup is in docs/deploy.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Waits for the setup: nothing to deploy to until the Firebase project is named.
+    if: vars.FIREBASE_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      PAGES_PROJECT: ${{ vars.PAGES_PROJECT || 'kudocoin' }}
+      APP_ORIGIN: ${{ vars.APP_ORIGIN || 'https://kudocoin.pages.dev' }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix worker && npm ci --prefix firebase && npm ci --prefix web
+
+      - name: The service account, for Firestore and the Worker
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
+          node -e '
+            const sa = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+            require("fs").writeFileSync(process.argv[2], JSON.stringify({ FIREBASE_CLIENT_EMAIL: sa.client_email, FIREBASE_PRIVATE_KEY: sa.private_key }))
+          ' "$RUNNER_TEMP/service-account.json" "$RUNNER_TEMP/worker-secrets.json"
+
+      - name: Firestore rules and indexes
+        working-directory: firebase
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/service-account.json
+        run: npx firebase deploy --only firestore --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Worker
+        working-directory: worker
+        run: |
+          npx wrangler deploy --var "FIREBASE_PROJECT_ID:$FIREBASE_PROJECT_ID" --var "ALLOWED_ORIGINS:$APP_ORIGIN" | tee "$RUNNER_TEMP/worker.log"
+          npx wrangler secret bulk "$RUNNER_TEMP/worker-secrets.json"
+          url=$(grep -o 'https://[a-z0-9.-]*\.workers\.dev' "$RUNNER_TEMP/worker.log" | head -1)
+          test -n "$url"
+          echo "API_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Web app
+        working-directory: web
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+        run: |
+          VITE_FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" VITE_API_URL="$API_URL" npm run build
+          npx --prefix ../worker wrangler pages project create "$PAGES_PROJECT" --production-branch main 2>/dev/null || true
+          npx --prefix ../worker wrangler pages deploy dist --project-name "$PAGES_PROJECT" --branch main --commit-dirty=true
+
+      - name: Check the API answers
+        run: curl -fsS "$API_URL/api/health"
+
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/service-account.json" "$RUNNER_TEMP/worker-secrets.json"
