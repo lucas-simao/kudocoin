@@ -1,6 +1,12 @@
 # Kudocoin
 
-**[Leia em português](README.pt-BR.md)**
+[![CI](https://github.com/lucas-simao/kudocoin/actions/workflows/ci.yml/badge.svg)](https://github.com/lucas-simao/kudocoin/actions/workflows/ci.yml)
+[![Deploy](https://github.com/lucas-simao/kudocoin/actions/workflows/deploy.yml/badge.svg)](https://github.com/lucas-simao/kudocoin/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**[Play now at kudocoin.pages.dev →](https://kudocoin.pages.dev/)** Free, nothing to install.
+
+[Leia em português](README.pt-BR.md)
 
 A playful coin for teams. Give coins to say thanks for a review, a fix or an answer at the right time. Each group keeps its leaderboard, and on the day it picks, it closes the season and gives a prize to whoever has the most.
 
