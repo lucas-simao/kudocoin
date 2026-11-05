@@ -1,6 +1,12 @@
 # Kudocoin
 
-**[Read in English](README.md)**
+[![CI](https://github.com/lucas-simao/kudocoin/actions/workflows/ci.yml/badge.svg)](https://github.com/lucas-simao/kudocoin/actions/workflows/ci.yml)
+[![Deploy](https://github.com/lucas-simao/kudocoin/actions/workflows/deploy.yml/badge.svg)](https://github.com/lucas-simao/kudocoin/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**[Jogue agora em kudocoin.pages.dev →](https://kudocoin.pages.dev/?lang=pt)** Grátis, nada para instalar.
+
+[Read in English](README.md)
 
 Uma moeda de brincadeira para times. Dê moedas para agradecer uma review, uma correção ou uma resposta na hora certa. Cada grupo tem o seu placar e, no dia que escolher, fecha a temporada e dá um prêmio para quem tiver mais.
 
