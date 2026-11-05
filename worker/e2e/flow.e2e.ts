@@ -1,6 +1,7 @@
 // The whole flow against the real Worker (wrangler dev) and the Firebase emulators: sign-in, an
-// organization, an invite, gives and their limits, awards, closing a season, removal, account deletion.
-import { beforeAll, describe, expect, it } from 'vitest'
+// organization, an invite, gives and their limits, awards, Slack, closing a season, removal, account deletion.
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { type FakeSlack, kudos, startFakeSlack, TEAM } from './fake-slack'
 
 const API = 'http://127.0.0.1:18611'
 const AUTH = 'http://127.0.0.1:18612/identitytoolkit.googleapis.com/v1'
@@ -57,6 +58,8 @@ const int = (field: { integerValue?: string } | undefined) => Number(field?.inte
 let ana: Person
 let bruno: Person
 let carla: Person
+let dave: Person
+let slack: FakeSlack
 let orgId: string
 const slug = `team-${Date.now().toString(36)}`
 
@@ -64,7 +67,17 @@ beforeAll(async () => {
   ana = await person('Ana')
   bruno = await person('Bruno')
   carla = await person('Carla')
+  dave = await person('Dave')
+  slack = await startFakeSlack()
 })
+
+afterAll(async () => {
+  await slack?.close()
+})
+
+const ANA_SLACK = { id: 'U0ANA', name: 'ana' }
+const BRUNO_SLACK = { id: 'U0BRUNO', name: 'bruno' }
+const linkToken = (reply: Record<string, any> | undefined) => new URL(reply!.blocks[0].accessory.url).searchParams.get('t')!
 
 describe('the whole flow', () => {
   it('refuses a request without a valid token', async () => {
@@ -142,6 +155,85 @@ describe('the whole flow', () => {
     expect(award.body).toMatchObject({ balance: 13 })
   })
 
+  it('connects a Slack workspace, admins only', async () => {
+    expect(((await fetch(`${API}/api/health`).then((response) => response.json())) as { slack: boolean }).slack).toBe(true)
+    expect((await call(bruno, 'POST', `/api/orgs/${orgId}/slack/install`)).status).toBe(403)
+    const install = await call(ana, 'POST', `/api/orgs/${orgId}/slack/install`)
+    const state = new URL(install.body.url).searchParams.get('state')!
+    const oauth = (query: string) => fetch(`${API}/slack/oauth?${query}`, { redirect: 'manual' })
+    expect((await oauth(`code=bad-code&state=${encodeURIComponent(state)}`)).headers.get('location')).toContain('slack=error')
+    expect((await oauth('code=good-code&state=forged.state')).headers.get('location')).toBe('http://localhost:18610/orgs?slack=error')
+    const connected = await oauth(`code=good-code&state=${encodeURIComponent(state)}`)
+    expect(connected.status).toBe(302)
+    expect(connected.headers.get('location')).toBe(`http://localhost:18610/o/${slug}/settings?slack=connected`)
+    expect((await read(`orgs/${orgId}`))!.slack.mapValue.fields.teamName.stringValue).toBe(TEAM.name)
+    const team = await read(`slackTeams/${TEAM.id}`)
+    expect(team!.orgId.stringValue).toBe(orgId)
+    // The workspace's token is kept sealed.
+    expect(team!.token.stringValue).not.toContain('xoxb')
+  })
+
+  it('links each Slack person once, through a link only they see', async () => {
+    expect((await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 hi', { secret: 'wrong' })).status).toBe(401)
+    const first = await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 thanks')
+    expect(first.reply!.response_type).toBe('ephemeral')
+    const token = linkToken(first.reply)
+    expect((await call(bruno, 'POST', '/api/slack/link/preview', { token })).body).toMatchObject({
+      teamName: TEAM.name,
+      slackName: 'bruno',
+      orgName: 'Team A',
+      isMember: true,
+    })
+    expect((await call(bruno, 'POST', '/api/slack/link', { token: 'forged.token' })).body.error).toBe('slack_link_invalid')
+    expect((await call(dave, 'POST', '/api/slack/link', { token })).body.error).toBe('slack_not_member')
+    expect((await call(bruno, 'POST', '/api/slack/link', { token })).status).toBe(200)
+    expect((await read(`slackUsers/${TEAM.id}_U0BRUNO`))!.uid.stringValue).toBe(bruno.uid)
+
+    // Ana has not linked yet: Bruno is told, and nothing is spent.
+    const notYet = await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 thanks')
+    expect(notYet.reply!.text).toContain('<@U0ANA>')
+    expect(int((await read(`orgs/${orgId}/members/${bruno.uid}`))?.given?.mapValue?.fields?.amount ?? { integerValue: '0' })).toBe(0)
+    const hers = await kudos(API, slack, ANA_SLACK, '')
+    expect((await call(ana, 'POST', '/api/slack/link', { token: linkToken(hers.reply) })).status).toBe(200)
+  })
+
+  it('gives from /kudos under the same rules, once per command', async () => {
+    // Messages follow the giver's language, or the connecting admin's when the giver has none (Ana: pt-BR).
+    expect((await kudos(API, slack, BRUNO_SLACK, 'help')).reply!.text).toContain('/kudos @pessoa')
+    expect((await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 9 too many')).reply!.text).toBe('Escolha de 1 a 5.')
+    expect((await kudos(API, slack, BRUNO_SLACK, '<@U0BRUNO|bruno> 1 me')).reply!.text).toBe('Você não pode dar moedas para si mesmo.')
+
+    const before = int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)
+    const text = '<@U0ANA|ana> 2 fixed the <!channel> deploy &amp; docs'
+    const gave = await kudos(API, slack, BRUNO_SLACK, text, { triggerId: 'same-trigger' })
+    expect(gave.reply!.response_type).toBe('in_channel')
+    expect(gave.reply!.text).toContain('<@U0BRUNO> deu 2 Kudocoin para <@U0ANA>: fixed the @channel deploy &amp; docs')
+    expect(gave.reply!.text).not.toContain('<!channel>')
+    expect(int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)).toBe(before + 2)
+    await kudos(API, slack, BRUNO_SLACK, text, { triggerId: 'same-trigger' })
+    expect(int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)).toBe(before + 2)
+
+    // With the announcement off, only the giver sees it.
+    expect((await call(bruno, 'PATCH', `/api/orgs/${orgId}/slack`, { announce: false })).status).toBe(403)
+    expect((await call(ana, 'PATCH', `/api/orgs/${orgId}/slack`, { announce: false })).status).toBe(200)
+    const quiet = await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 quiet thanks')
+    expect(quiet.reply).toMatchObject({ response_type: 'ephemeral', text: 'Você deu 1 Kudocoin para <@U0ANA>. Hoje ainda pode dar 2.' })
+  })
+
+  it('lets a person unlink, and an admin disconnect the workspace', async () => {
+    const mine = await call(ana, 'GET', '/api/me/slack')
+    expect(mine.body.links).toEqual([{ id: `${TEAM.id}_U0ANA`, teamName: TEAM.name, slackName: 'ana' }])
+    expect((await call(bruno, 'DELETE', `/api/me/slack/${TEAM.id}_U0ANA`)).status).toBe(404)
+    expect((await call(ana, 'DELETE', `/api/me/slack/${TEAM.id}_U0ANA`)).status).toBe(200)
+    expect((await call(ana, 'GET', '/api/me/slack')).body.links).toEqual([])
+
+    expect((await call(ana, 'DELETE', `/api/orgs/${orgId}/slack`)).status).toBe(200)
+    expect('nullValue' in (await read(`orgs/${orgId}`))!.slack).toBe(true)
+    expect(await read(`slackTeams/${TEAM.id}`)).toBe(undefined)
+    expect(slack.revoked).toContain('Bearer xoxb-fake-token')
+    expect((await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 hi')).reply!.text).toContain('Settings')
+  })
+
   it('changes settings and closes the season on its last day', async () => {
     expect((await call(bruno, 'PATCH', `/api/orgs/${orgId}`, { name: 'Hacked' })).status).toBe(403)
     expect((await call(ana, 'POST', `/api/orgs/${orgId}/seasons/close`, {})).body.error).toBe('season_not_ended')
@@ -176,6 +268,7 @@ describe('the whole flow', () => {
   it('deletes an account and clears the name from the ledger', async () => {
     expect((await call(bruno, 'DELETE', '/api/me')).status).toBe(200)
     expect(await read(`users/${bruno.uid}`)).toBe(undefined)
+    expect(await read(`slackUsers/${TEAM.id}_U0BRUNO`)).toBe(undefined)
     expect(await read(`orgs/${orgId}`)).toBe(undefined)
   })
 })

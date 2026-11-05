@@ -3,6 +3,7 @@ import type { Caller } from '../auth/firebase-token'
 import { ApiError } from '../errors'
 import type { Firestore, Write } from '../firestore/client'
 import { as, type OrgDoc, paths, toDoc, type UserDoc, type UserOrgDoc } from '../repositories/documents'
+import { unlinkAll } from '../slack/service'
 import { removalWrites } from './members'
 
 const LANGS = ['pt-BR', 'en', 'es'] as const
@@ -63,6 +64,7 @@ export async function deleteAccount(store: Firestore, caller: Caller): Promise<v
     await store.commit(writes)
     if (org.ownerUid !== caller.uid) await renameInLedger(store, orgId, caller.uid)
   }
+  await unlinkAll(store, caller.uid)
   await store.commit([{ path: paths.user(caller.uid), delete: true }])
 }
 

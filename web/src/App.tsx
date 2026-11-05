@@ -10,10 +10,11 @@ import { OrgPage } from '@/features/org/OrgPage'
 import { CreateOrg } from '@/features/orgs/CreateOrg'
 import { OrgList } from '@/features/orgs/OrgList'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { SlackLinkPage } from '@/features/slack/SlackLinkPage'
 import { useI18n } from '@/i18n'
 import { navigate, type Route, useRoute } from '@/lib/router'
 
-const PUBLIC: Route['name'][] = ['home', 'join', 'missing']
+const PUBLIC: Route['name'][] = ['home', 'join', 'slackLink', 'missing']
 
 export function App() {
   const route = useRoute()
@@ -47,6 +48,8 @@ function Screen({ route }: { route: Route }) {
       return <SettingsPage key={route.slug} slug={route.slug} />
     case 'join':
       return <JoinPage token={route.token} />
+    case 'slackLink':
+      return <SlackLinkPage />
     case 'account':
       return <AccountPage />
     case 'missing':

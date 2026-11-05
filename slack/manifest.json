@@ -1,0 +1,30 @@
+{
+  "_metadata": { "major_version": 1, "minor_version": 1 },
+  "display_information": {
+    "name": "Kudocoin",
+    "description": "Give coins to the people who helped you, right where you said thanks.",
+    "long_description": "Kudocoin is a playful coin for teams and friends: everyone gets a few coins a day to give to whoever helped them, with a reason, and a leaderboard closes each season with a prize. This app adds /kudos to Slack. An admin connects the workspace to their Kudocoin organization, each person links their account once, and then /kudos @person 2 reviewed my PR gives coins under the same rules as the website. The app reads no messages or channels. Open source: https://github.com/lucas-simao/kudocoin",
+    "background_color": "#2b2118"
+  },
+  "features": {
+    "bot_user": { "display_name": "Kudocoin", "always_online": false },
+    "slash_commands": [
+      {
+        "command": "/kudos",
+        "url": "https://kudocoin-api.lucas-simao01.workers.dev/slack/commands",
+        "description": "Give coins to someone who helped you",
+        "usage_hint": "@person [amount] reason",
+        "should_escape": true
+      }
+    ]
+  },
+  "oauth_config": {
+    "redirect_urls": ["https://kudocoin-api.lucas-simao01.workers.dev/slack/oauth"],
+    "scopes": { "bot": ["commands"] }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

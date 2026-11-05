@@ -9,10 +9,15 @@ workers_dev = true
 FIREBASE_PROJECT_ID = "kudocoin"
 # Where the web app runs, for CORS. A comma-separated list.
 ALLOWED_ORIGINS = "https://kudocoin.pages.dev"
+# The Slack app's client ID (docs/decisions/slack.md). Empty leaves Slack off.
+SLACK_CLIENT_ID = ""
 
 # Secrets, set with `wrangler secret put`:
 #   FIREBASE_CLIENT_EMAIL  the service account's email
 #   FIREBASE_PRIVATE_KEY   its private key (PEM, with \n kept)
+#   SLACK_CLIENT_SECRET    the Slack app's client secret
+#   SLACK_SIGNING_SECRET   the Slack app's signing secret
+#   SLACK_KEY              a long random string: signs Slack links, seals workspace tokens
 
 # Local development against the Firebase emulators (make dev). Never set these in production.
 [env.dev.vars]
@@ -20,3 +25,10 @@ FIREBASE_PROJECT_ID = "demo-kudocoin"
 ALLOWED_ORIGINS = "http://localhost:18610"
 FIRESTORE_EMULATOR_HOST = "127.0.0.1:18613"
 AUTH_EMULATOR = "true"
+# Slack against a fake Slack the end-to-end tests run (e2e/fake-slack.ts).
+SLACK_CLIENT_ID = "dev-client"
+SLACK_CLIENT_SECRET = "dev-client-secret"
+SLACK_SIGNING_SECRET = "dev-signing-secret"
+SLACK_KEY = "dev-slack-key-not-a-secret"
+SLACK_API_URL = "http://127.0.0.1:18615/api"
+SLACK_HOOKS_URL = "http://127.0.0.1:18615/hooks/"

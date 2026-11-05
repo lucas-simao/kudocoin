@@ -11,6 +11,8 @@ import { join, newInvite, previewInvite, turnOffInvite } from './services/invite
 import { removeMember, setRole } from './services/members'
 import { createOrg, resolveSlug, updateOrg } from './services/orgs'
 import { closeSeason } from './services/seasons'
+import { slashCommand } from './slack/command'
+import { disconnect, installUrl, link, linkPreview, myLinks, oauthCallback, setAnnounce, slackOn, unlink } from './slack/service'
 
 type Handler = (ctx: Context) => Promise<unknown>
 
@@ -72,6 +74,29 @@ const routes: [method: string, pattern: string, handler: Handler][] = [
     return { ok: true }
   }],
 
+  // Slack: docs/decisions/slack.md.
+  ['POST', '/api/orgs/:orgId/slack/install', async ({ request, env, store, caller, params }) => {
+    await requireRole(store, params.orgId, caller, 'admin')
+    return installUrl(env, params.orgId, caller, new URL(request.url).origin)
+  }],
+  ['PATCH', '/api/orgs/:orgId/slack', async ({ store, caller, params, body }) => {
+    await requireRole(store, params.orgId, caller, 'admin')
+    await setAnnounce(store, params.orgId, body)
+    return { ok: true }
+  }],
+  ['DELETE', '/api/orgs/:orgId/slack', async ({ env, store, caller, params }) => {
+    await requireRole(store, params.orgId, caller, 'admin')
+    await disconnect(env, store, params.orgId)
+    return { ok: true }
+  }],
+  ['POST', '/api/slack/link/preview', ({ env, store, caller, body }) => linkPreview(env, store, caller, body.token)],
+  ['POST', '/api/slack/link', ({ env, store, caller, body }) => link(env, store, caller, body.token)],
+  ['GET', '/api/me/slack', ({ store, caller }) => myLinks(store, caller)],
+  ['DELETE', '/api/me/slack/:id', async ({ store, caller, params }) => {
+    await unlink(store, caller, params.id)
+    return { ok: true }
+  }],
+
   ['POST', '/api/orgs/:orgId/seasons/close', async ({ store, caller, params, body }) => {
     await requireRole(store, params.orgId, caller, 'admin')
     return closeSeason(store, params.orgId, body as never)
@@ -118,12 +143,15 @@ function json(status: number, body: unknown, headers: Record<string, string>): R
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const cors = corsHeaders(request, env)
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     const url = new URL(request.url)
-    if (url.pathname === '/api/health') return json(200, { ok: true }, cors)
+    if (url.pathname === '/api/health') return json(200, { ok: true, slack: slackOn(env) }, cors)
     try {
+      // Slack's own requests carry its signature, not a Firebase token.
+      if (url.pathname === '/slack/commands' && request.method === 'POST') return await slashCommand(request, env, ctx)
+      if (url.pathname === '/slack/oauth' && request.method === 'GET') return await oauthCallback(env, new Firestore(env), url)
       for (const [method, pattern, handler] of routes) {
         if (method !== request.method) continue
         const params = match(pattern, url.pathname)

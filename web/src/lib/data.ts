@@ -22,6 +22,8 @@ export interface Org {
   seasonId: string
   ownerUid: string
   memberCount: number
+  /** The Slack workspace playing here, if any (docs/decisions/slack.md). */
+  slack?: { teamId: string; teamName: string; announce: boolean } | null
 }
 
 export interface Member {

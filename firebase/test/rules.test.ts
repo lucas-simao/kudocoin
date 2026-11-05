@@ -34,6 +34,8 @@ beforeAll(async () => {
     }
     await setDoc(doc(db, 'slugs/team-a'), { orgId: 'org-a' })
     await setDoc(doc(db, 'invites/hash-a'), { orgId: 'org-a' })
+    await setDoc(doc(db, 'slackTeams/T1'), { orgId: 'org-a', token: 'sealed' })
+    await setDoc(doc(db, 'slackUsers/T1_U1'), { uid: 'ana' })
   })
 })
 
@@ -74,9 +76,11 @@ describe('a member', () => {
     await assertFails(getDocs(collection(as('bruno'), 'users/ana/orgs')))
   })
 
-  it('never reads slugs or invites', async () => {
+  it('never reads slugs, invites or the Slack links', async () => {
     await assertFails(getDoc(doc(as('ana'), 'slugs/team-a')))
     await assertFails(getDoc(doc(as('ana'), 'invites/hash-a')))
+    await assertFails(getDoc(doc(as('ana'), 'slackTeams/T1')))
+    await assertFails(getDoc(doc(as('ana'), 'slackUsers/T1_U1')))
   })
 })
 

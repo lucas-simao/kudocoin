@@ -13,6 +13,15 @@ export interface OrgDoc {
   inviteHash: string | null
   memberCount: number
   createdAt: Date
+  /** The Slack workspace playing here, if any (docs/decisions/slack.md). Members see its name. */
+  slack?: OrgSlack | null
+}
+
+export interface OrgSlack {
+  teamId: string
+  teamName: string
+  /** A give from Slack is posted in the channel; off, only the giver sees it. */
+  announce: boolean
 }
 
 export interface MemberDoc {
@@ -82,6 +91,28 @@ export interface InviteDoc {
   createdAt: Date
 }
 
+/** One Slack workspace and the organization it plays in. Only the Worker reads it. */
+export interface SlackTeamDoc {
+  orgId: string
+  teamName: string
+  /** The workspace's token, sealed with AES-GCM (slack/crypto.ts). */
+  token: string
+  /** The language of the admin who connected it, for messages to people not linked yet. */
+  lang: UserDoc['lang']
+  installedBy: string
+  installedAt: Date
+}
+
+/** A Slack person linked to a Kudocoin account. Only the Worker reads it. */
+export interface SlackUserDoc {
+  uid: string
+  teamId: string
+  slackUserId: string
+  slackName: string
+  teamName: string
+  linkedAt: Date
+}
+
 export const paths = {
   user: (uid: string) => `users/${uid}`,
   userOrg: (uid: string, orgId: string) => `users/${uid}/orgs/${orgId}`,
@@ -92,6 +123,8 @@ export const paths = {
   entry: (orgId: string, entryId: string) => `orgs/${orgId}/ledger/${entryId}`,
   adminInvite: (orgId: string) => `orgs/${orgId}/admin/invite`,
   invite: (hash: string) => `invites/${hash}`,
+  slackTeam: (teamId: string) => `slackTeams/${teamId}`,
+  slackUser: (id: string) => `slackUsers/${id}`,
 }
 
 /** Firestore hands back plain objects; these name what each path holds. */

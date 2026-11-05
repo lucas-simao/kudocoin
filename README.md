@@ -18,7 +18,7 @@ Free and open source. One public server runs it for everyone: sign in with GitHu
 
 1. Create an organization and set its rules: what the coin is called, how many each member can give a day, the largest single give, how much one person can receive a day, when the season ends and what the prize is.
 2. Share the invite link in the group's chat.
-3. Give coins with a reason: "reviewed my PR at 11 pm". Your daily allowance is shown as you give.
+3. Give coins with a reason: "reviewed my PR at 11 pm". Your daily allowance is shown as you give. With Slack connected, `/kudos @ana 2 reviewed my PR` does the same without leaving the conversation.
 4. Follow the leaderboard. On the last day, an admin closes the season, the final standings are kept, and everyone starts again from zero.
 
 In Portuguese, English and Spanish.

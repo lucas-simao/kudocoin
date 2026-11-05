@@ -55,7 +55,20 @@ export interface Settings {
   timezone: string
 }
 
+export interface SlackLinkPreview {
+  teamName: string
+  slackName: string
+  orgName: string
+  slug: string
+  isMember: boolean
+}
+
 export const api = {
+  /** Whether the API answers, and whether Slack is set up on it. Needs no sign-in. */
+  health: () =>
+    fetch(`${BASE}/api/health`)
+      .then((response) => response.json() as Promise<{ ok: boolean; slack?: boolean }>)
+      .catch(() => ({ ok: false, slack: false })),
   syncProfile: (lang: string, github?: string) => request<unknown>('POST', '/api/me', { lang, github }),
   deleteAccount: () => request<unknown>('DELETE', '/api/me'),
   createOrg: (input: { name: string; slug: string; settings: Settings; season: { endsOn: string; prize: string } }) =>
@@ -76,4 +89,11 @@ export const api = {
   removeMember: (orgId: string, uid: string) => request<unknown>('DELETE', `/api/orgs/${orgId}/members/${uid}`),
   closeSeason: (orgId: string, next: { endsOn: string; prize: string }) =>
     request<{ seasonId: string }>('POST', `/api/orgs/${orgId}/seasons/close`, next),
+  slackInstall: (orgId: string) => request<{ url: string }>('POST', `/api/orgs/${orgId}/slack/install`),
+  slackAnnounce: (orgId: string, announce: boolean) => request<unknown>('PATCH', `/api/orgs/${orgId}/slack`, { announce }),
+  slackDisconnect: (orgId: string) => request<unknown>('DELETE', `/api/orgs/${orgId}/slack`),
+  slackLinkPreview: (token: string) => request<SlackLinkPreview>('POST', '/api/slack/link/preview', { token }),
+  slackLink: (token: string) => request<{ slug: string; orgName: string; teamName: string }>('POST', '/api/slack/link', { token }),
+  mySlackLinks: () => request<{ links: { id: string; teamName: string; slackName: string }[] }>('GET', '/api/me/slack'),
+  unlinkSlack: (id: string) => request<unknown>('DELETE', `/api/me/slack/${id}`),
 }
