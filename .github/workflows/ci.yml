@@ -19,10 +19,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
-      - run: git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 || echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
+      # This repository's sessions cannot reach npm. A dependency added to package.json makes npm ci refuse
+      # the lockfile; npm install then updates it, the job prints it for committing, and fails at the end.
+      - run: npm ci || npm install --no-audit --no-fund
+      - run: git diff --quiet package-lock.json || echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
       - run: npm test
       - run: npm run build
+      - run: git diff --quiet package-lock.json || { echo "::error::package-lock.json is out of date; commit the LOCKFILE printed above"; exit 1; }
 
   worker:
     runs-on: ubuntu-latest

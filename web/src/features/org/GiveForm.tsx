@@ -2,6 +2,7 @@ import { type FormEvent, useRef, useState } from 'react'
 import { api, ApiError, entryKey } from '@/api/client'
 import { Button, Field, Input, Notice, Select, TextArea } from '@/components/ui'
 import { useI18n } from '@/i18n'
+import { clamp } from '@/lib/amount'
 import type { Member, Org } from '@/lib/data'
 
 /**
@@ -13,7 +14,10 @@ export function GiveForm({ org, members, myUid, left, kind = 'give' }: { org: Or
   const others = members.filter((member) => member.uid !== myUid)
   const max = kind === 'award' ? 1000 : Math.max(1, Math.min(org.settings.maxPerGive, left))
   const [to, setTo] = useState('')
-  const [amount, setAmount] = useState(1)
+  // What is typed, so the field can be cleared while typing; the amount sent is always a whole number in 1..max.
+  const [draft, setDraft] = useState('1')
+  const amount = clamp(Number.parseInt(draft, 10), max)
+  const setAmount = (value: number) => setDraft(String(clamp(value, max)))
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'done' | 'error'; text: string }>()
@@ -60,19 +64,42 @@ export function GiveForm({ org, members, myUid, left, kind = 'give' }: { org: Or
           </Select>
         )}
       </Field>
-      <Field label={t('give.amount')}>
-        {(id) => (
-          <Input
-            id={id}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={max}
-            required
-            disabled={empty}
-            value={amount}
-            onChange={(event) => setAmount(Math.max(1, Math.round(Number(event.target.value) || 1)))}
-          />
+      <Field label={t('give.amount')} hint={empty ? undefined : t('give.upTo', { n: number(max) })}>
+        {(id, describedBy) => (
+          <div className="flex gap-2">
+            <Button
+              variant="quiet"
+              className="w-11 shrink-0 px-0 text-xl"
+              aria-label={t('give.less')}
+              disabled={empty || amount <= 1}
+              onClick={() => setAmount(amount - 1)}
+            >
+              −
+            </Button>
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              className="text-center text-lg font-semibold tabular"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={max}
+              required
+              disabled={empty}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+              onBlur={() => setAmount(amount)}
+            />
+            <Button
+              variant="quiet"
+              className="w-11 shrink-0 px-0 text-xl"
+              aria-label={t('give.more')}
+              disabled={empty || amount >= max}
+              onClick={() => setAmount(amount + 1)}
+            >
+              +
+            </Button>
+          </div>
         )}
       </Field>
       <Field label={t('give.reason')}>

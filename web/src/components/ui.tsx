@@ -38,8 +38,13 @@ export function Button({
   )
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-card border border-line-subtle bg-surface p-5 shadow-card sm:p-6 ${className}`}>{children}</section>
+/** `tour` names the card for the guided tour (features/tour/tour.ts). */
+export function Card({ children, className = '', tour }: { children: ReactNode; className?: string; tour?: string }) {
+  return (
+    <section data-tour={tour} className={`rounded-card border border-line-subtle bg-surface p-5 shadow-card sm:p-6 ${className}`}>
+      {children}
+    </section>
+  )
 }
 
 export function Heading({ children, as: Tag = 'h2' }: { children: ReactNode; as?: 'h1' | 'h2' | 'h3' }) {

@@ -65,8 +65,8 @@ export function Landing() {
       </section>
 
       <footer className="flex flex-col gap-3 border-t border-line-subtle pt-6 text-sm text-subtle sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-2xl">{t('landing.noMoney')}</p>
-        <a className="font-medium text-coin-text underline-offset-4 hover:underline" href="https://github.com/lucas-simao/kudocoin">
+        <p className="sm:flex-1">{t('landing.noMoney')}</p>
+        <a className="shrink-0 font-medium text-coin-text underline-offset-4 hover:underline" href="https://github.com/lucas-simao/kudocoin">
           {t('landing.source')}
         </a>
       </footer>

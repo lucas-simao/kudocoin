@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { useSession } from '@/auth/session'
-import { Avatar, Card, Coins, Heading, Notice, Spinner } from '@/components/ui'
+import { Avatar, Button, Card, Coins, Heading, Notice, Spinner } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import {
   type Entry,
@@ -17,6 +17,7 @@ import {
   useSeason,
 } from '@/lib/data'
 import { Link } from '@/lib/router'
+import { startTour, tourSeen } from '../tour/tour'
 import { GiveForm } from './GiveForm'
 
 /** Loads an organization by its address and hands it to `children`, for every screen under /o/<slug>. */
@@ -43,6 +44,24 @@ function OrgBoard({ org }: { org: Org }) {
   const me = members?.find((member) => member.uid === user?.uid)
   const today = todayIn(org.settings.timezone)
   const left = Math.max(0, org.settings.dailyAllowance - givenToday(me, org.settings.timezone))
+  const ready = Boolean(season && members && me && recent)
+  const tour = () =>
+    startTour({
+      t,
+      coinName: org.settings.coinName,
+      dailyAllowance: org.settings.dailyAllowance,
+      maxPerGive: org.settings.maxPerGive,
+      isAdmin: me?.role !== 'member',
+      slackTeam: org.slack?.teamName ?? null,
+    })
+
+  // The first time someone opens an organization, once everything it points at is on the screen.
+  useEffect(() => {
+    if (!ready || tourSeen()) return
+    const timer = window.setTimeout(tour, 400)
+    return () => window.clearTimeout(timer)
+    // Only `ready` matters: the tour reads the rest when it starts.
+  }, [ready])
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,18 +76,29 @@ function OrgBoard({ org }: { org: Org }) {
             {t('org.members', { n: number(org.memberCount) })}
           </p>
         </div>
-        {/* Members find "leave" there; admins find everything else too. */}
-        {me ? (
-          <Link to={{ name: 'settings', slug: org.slug }} className="min-h-11 rounded-control border border-line px-4 py-2.5 text-[0.9375rem] hover:bg-hover">
-            {t('org.settings')}
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {ready ? (
+            <Button variant="quiet" onClick={tour}>
+              {t('tour.start')}
+            </Button>
+          ) : null}
+          {/* Members find "leave" there; admins find everything else too. */}
+          {me ? (
+            <Link
+              to={{ name: 'settings', slug: org.slug }}
+              data-tour="settings"
+              className="min-h-11 rounded-control border border-line px-4 py-2.5 text-[0.9375rem] hover:bg-hover"
+            >
+              {t('org.settings')}
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {season && today > season.endsOn ? <Notice>{t('org.ended')}</Notice> : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <Card className="flex flex-col gap-4">
+        <Card className="flex flex-col gap-4" tour="board">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <Heading>{t('org.leaderboard')}</Heading>
             <p className="text-sm text-coin-text">{season?.prize ? t('org.prize', { prize: season.prize }) : t('org.noPrize')}</p>
@@ -77,14 +107,14 @@ function OrgBoard({ org }: { org: Org }) {
         </Card>
 
         <div className="flex flex-col gap-6">
-          <Card className="flex flex-col gap-4">
+          <Card className="flex flex-col gap-4" tour="give">
             <Heading>{t('give.title')}</Heading>
             {members && user ? <GiveForm org={org} members={members} myUid={user.uid} left={left} /> : <Spinner label={t('common.loading')} />}
           </Card>
         </div>
       </div>
 
-      <Card className="flex flex-col gap-4">
+      <Card className="flex flex-col gap-4" tour="recent">
         <Heading>{t('org.recent')}</Heading>
         {recent === undefined ? <Spinner label={t('common.loading')} /> : <EntryList entries={recent} org={org} />}
       </Card>
