@@ -152,16 +152,32 @@ export class Firestore {
   async transaction<T>(work: (tx: Transaction) => Promise<{ writes: Write[]; result: T }>): Promise<T> {
     for (let attempt = 0; ; attempt += 1) {
       const id = await this.begin()
-      const { writes, result } = await work(new Transaction(this, id))
+      let outcome: { writes: Write[]; result: T }
       try {
-        await this.commit(writes, id)
-        return result
+        outcome = await work(new Transaction(this, id))
+      } catch (error) {
+        // Firestore holds locks on what a transaction read until it ends: a refused give must end it too,
+        // or the next one on the same documents waits and fails.
+        await this.rollback(id)
+        throw error
+      }
+      if (outcome.writes.length === 0) {
+        await this.rollback(id)
+        return outcome.result
+      }
+      try {
+        await this.commit(outcome.writes, id)
+        return outcome.result
       } catch (error) {
         if (error instanceof Conflict && attempt === 0) continue
         if (error instanceof Conflict) throw new ApiError('conflict')
         throw error
       }
     }
+  }
+
+  async rollback(transaction: string): Promise<void> {
+    await this.call('POST', `${this.base}:rollback`, { transaction }).catch(() => undefined)
   }
 
   private toWrite(write: Write): Record<string, unknown> {
