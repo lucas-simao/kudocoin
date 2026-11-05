@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// The second lock (docs/decisions/organizations.md): a member reads their own organization, and no
+// client writes anything. Only the Worker's service account writes, and these rules do not apply to it.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(orgId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid);
+    }
+
+    function isMember(orgId) {
+      return signedIn() && exists(memberPath(orgId));
+    }
+
+    function isAdmin(orgId) {
+      return isMember(orgId) && get(memberPath(orgId)).data.role in ['owner', 'admin'];
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+
+      match /orgs/{orgId} {
+        allow read: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    match /orgs/{orgId} {
+      allow read: if isMember(orgId);
+
+      match /members/{uid} {
+        allow read: if isMember(orgId);
+      }
+
+      match /seasons/{seasonId} {
+        allow read: if isMember(orgId);
+      }
+
+      match /ledger/{entryId} {
+        allow read: if isMember(orgId);
+      }
+
+      // The active invite link, for admins to copy again (docs/decisions/invites.md).
+      match /admin/{docId} {
+        allow read: if isAdmin(orgId);
+      }
+    }
+
+    // slugs/ and invites/ are read only by the Worker; nothing else is open.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
