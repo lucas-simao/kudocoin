@@ -50,8 +50,9 @@ Without this, the app works as before and the Slack section stays hidden (`docs/
 
 1. At api.slack.com/apps → Create New App → **From a manifest**, pick a workspace of yours (it is only where the app is managed), and paste `slack/manifest.json`. If the Worker's address is not `kudocoin-api.lucas-simao01.workers.dev`, change it in both URLs first.
 2. **Basic Information → App Credentials**: copy the **Client ID**, the **Client Secret** and the **Signing Secret**.
-3. **Manage Distribution → Activate Public Distribution**, so other workspaces can add the app. It does not need to be listed in Slack's directory.
-4. In GitHub, add:
+3. **Basic Information → Display Information → App icon**: upload `slack/icon-512.png`.
+4. **Manage Distribution → Activate Public Distribution**, so other workspaces can add the app. It does not need to be listed in Slack's directory.
+5. In GitHub, add:
 
 | Kind | Name | Value |
 | --- | --- | --- |
@@ -60,7 +61,7 @@ Without this, the app works as before and the Slack section stays hidden (`docs/
 | Secret | `SLACK_SIGNING_SECRET` | The Signing Secret |
 | Secret | `SLACK_KEY` | A long random string, for example from `openssl rand -base64 32`. Changing it later disconnects every workspace and invalidates open links. |
 
-5. Run the deploy again. Settings → Slack → *Add to Slack* in any organization connects a workspace.
+6. Run the deploy again. Settings → Slack → *Add to Slack* in any organization connects a workspace.
 
 ## After
 
