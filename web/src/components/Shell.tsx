@@ -32,7 +32,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-10 border-b border-line-subtle bg-canvas">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
           <Link to={user ? { name: 'orgs' } : { name: 'home' }} className="flex items-center gap-2 font-display text-lg font-semibold">
-            <img src="/favicon.svg" alt="" width={26} height={26} />
+            <img src="/favicon.svg" alt="" width={30} height={30} />
             Kudocoin
           </Link>
           <div className="flex items-center gap-2">

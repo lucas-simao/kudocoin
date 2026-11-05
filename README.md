@@ -1,3 +1,5 @@
+<img src="brand/logo.svg" alt="" width="72" height="72" align="left" />
+
 # Kudocoin
 
 [![CI](https://github.com/lucas-simao/kudocoin/actions/workflows/ci.yml/badge.svg)](https://github.com/lucas-simao/kudocoin/actions/workflows/ci.yml)
