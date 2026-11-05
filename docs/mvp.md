@@ -12,8 +12,8 @@ The first release is the smallest thing a group can play with for a whole season
 - A member's page: what they received and gave, with reasons.
 - Admin: change settings, remove a member, make someone admin, award coins, close the season.
 - Past seasons: the final standings, read only.
-- Portuguese and English, with a switch in the header.
-- A public page at `/` that explains Kudocoin in both languages.
+- Portuguese, English and Spanish, with a switch in the header.
+- A public page at `/` that explains Kudocoin in every language.
 
 ## Out, on purpose
 
@@ -28,4 +28,4 @@ The first release is the smallest thing a group can play with for a whole season
 - A new person can sign in, create an organization, invite a friend, and give them coins in under two minutes.
 - One organization never sees another's members, gives or settings.
 - A member cannot give more than the allowance, give to themselves, or write a balance from the browser, and the tests prove it.
-- Every screen reads the same in both languages, and a test fails when a key is missing in one of them.
+- Every screen reads the same in every language, and a test fails when a key is missing in one of them.
