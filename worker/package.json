@@ -7,7 +7,8 @@
     "dev": "wrangler dev --port ${KUDOCOIN_WORKER_PORT:-18611}",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "cd ../firebase && npx firebase emulators:exec --project demo-kudocoin --only auth,firestore 'bash ../worker/scripts/e2e.sh'"
   },
   "dependencies": {
     "jose": "^6.0.11"

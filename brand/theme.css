@@ -1,0 +1,70 @@
+/* Kudocoin tokens, used by web/. Values come from DESIGN.md; components never carry a hex. */
+
+/* Light is the default: warm paper, dark ink, and the coin's gold as the one loud color. */
+@theme static {
+  --color-canvas: #f7f4ec;
+  --color-surface: #fffdf8;
+  --color-raised: #ffffff;
+  --color-hover: #f0ebdf;
+  --color-selected: #e8e1d0;
+
+  --color-line-subtle: #ebe5d7;
+  --color-line: #ddd5c3;
+  --color-line-control: #8a8170;
+
+  --color-ink: #1f1c15;
+  --color-muted: #555044;
+  --color-subtle: #6b6555;
+
+  /* The coin. Ink on gold reads at every size; gold text uses the deeper shade. */
+  --color-coin: #f2b632;
+  --color-coin-hover: #e6a91f;
+  --color-coin-pressed: #d69a12;
+  --color-coin-soft: #fcefcc;
+  --color-on-coin: #1f1c15;
+  --color-coin-text: #8a5a00;
+  --color-focus: #8a5a00;
+
+  --color-alert-text: #b42318;
+  --color-alert-soft: #fdecea;
+  --color-done-text: #2e6b3a;
+  --color-done-soft: #e6f2e6;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: ui-rounded, 'SF Pro Rounded', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgb(31 28 21 / 0.06), 0 4px 16px -8px rgb(31 28 21 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #14130f;
+    --color-surface: #1b1a15;
+    --color-raised: #23211b;
+    --color-hover: #2a2820;
+    --color-selected: #333027;
+    --color-line-subtle: #2a2821;
+    --color-line: #3a372d;
+    --color-line-control: #8a8473;
+    --color-ink: #f3efe4;
+    --color-muted: #c2bcab;
+    --color-subtle: #a59f8e;
+    --color-coin: #f2b632;
+    --color-coin-hover: #f5c351;
+    --color-coin-pressed: #f7cd6a;
+    --color-coin-soft: #3a2e12;
+    --color-on-coin: #1f1c15;
+    --color-coin-text: #f5c351;
+    --color-focus: #f5c351;
+    --color-alert-text: #ff8a7d;
+    --color-alert-soft: #3a1714;
+    --color-done-text: #8fd19e;
+    --color-done-soft: #16301c;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  }
+}

@@ -9,6 +9,21 @@ permissions:
   contents: read
 
 jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+      - run: git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 || echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
+      - run: npm test
+      - run: npm run build
+
   worker:
     runs-on: ubuntu-latest
     defaults:
@@ -45,3 +60,20 @@ jobs:
       - run: npm test
       # Until a lockfile is committed, print the one npm made, for copying into the repository.
       - run: git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 || echo "LOCKFILE $(gzip -9c package-lock.json | base64 -w0)"
+
+  # The Worker against the Firebase emulators, end to end. firebase-tools comes from firebase/.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci --prefix worker
+      - run: npm ci --prefix firebase
+      - run: npm run e2e --prefix worker
+
