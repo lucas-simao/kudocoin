@@ -2,13 +2,14 @@
 // The choice follows the browser on the first visit and is kept after (docs/decisions/languages.md).
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react'
 import { en } from './locales/en'
+import { es } from './locales/es'
 import { ptBR } from './locales/pt-BR'
 import type { Key, Lang, Messages } from './types'
 
 export type { Key, Lang } from './types'
 
-export const LOCALES: Record<Lang, Messages> = { 'pt-BR': ptBR, en }
-export const LANGS: Lang[] = ['pt-BR', 'en']
+export const LOCALES: Record<Lang, Messages> = { 'pt-BR': ptBR, en, es }
+export const LANGS: Lang[] = ['pt-BR', 'en', 'es']
 const STORAGE = 'kudocoin.lang'
 
 export function translate(messages: Messages, key: string, vars?: Record<string, string | number>): string {
@@ -24,12 +25,16 @@ export function detectLang(): Lang {
     const query = new URLSearchParams(window.location.search).get('lang')
     if (query === 'pt') return 'pt-BR'
     if (query === 'en') return 'en'
+    if (query === 'es') return 'es'
     const saved = window.localStorage.getItem(STORAGE)
-    if (saved === 'pt-BR' || saved === 'en') return saved
+    if (saved === 'pt-BR' || saved === 'en' || saved === 'es') return saved
   } catch {
     // Storage can be off; the browser's language still answers.
   }
-  return navigator.language.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en'
+  const browser = navigator.language.toLowerCase()
+  if (browser.startsWith('pt')) return 'pt-BR'
+  if (browser.startsWith('es')) return 'es'
+  return 'en'
 }
 
 interface I18n {

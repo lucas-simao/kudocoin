@@ -17,7 +17,7 @@ Kudocoin is free and open source, and one public server runs it for everyone. A 
 - **The ledger only grows.** A give is never edited or deleted. A mistake is fixed by a new entry that says why.
 - **Only the server writes coins.** The browser asks; the server checks the organization's rules and writes. See `docs/decisions/ledger.md`.
 - **It costs nothing to run.** Everything fits the free plans of Firebase and Cloudflare, with no card on file. A feature that needs a paid plan waits. See `docs/decisions/zero-cost-hosting.md`.
-- **Two languages, always.** Every word on screen exists in Brazilian Portuguese and English. See `docs/decisions/languages.md`.
+- **Three languages, always.** Every word on screen exists in Brazilian Portuguese, English and Spanish. See `docs/decisions/languages.md`.
 
 ## How it works
 

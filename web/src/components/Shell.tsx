@@ -16,7 +16,7 @@ export function LanguageSwitch() {
           onClick={() => setLang(code)}
           className={`min-h-8 rounded-pill px-2.5 ${lang === code ? 'bg-ink text-canvas' : 'text-muted hover:text-ink'}`}
         >
-          {code === 'pt-BR' ? 'PT' : 'EN'}
+          {code === 'pt-BR' ? 'PT' : code.toUpperCase()}
         </button>
       ))}
     </div>
