@@ -31,7 +31,7 @@ It runs on the free plans of Firebase (sign-in and Firestore) and Cloudflare (Wo
 
 ## Run it
 
-`make dev` starts the Firebase emulators, the Worker and the web app, with no cloud account. `make test` runs the tests.
+`make install`, then `make dev` starts the Firebase emulators, the Worker and the web app, with no cloud account (the emulators need Java 21). `make test` runs the tests. Publishing is set up once, as [docs/deploy.md](docs/deploy.md) says, and then happens on every merge to `main`.
 
 ## License
 

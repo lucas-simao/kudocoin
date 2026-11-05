@@ -31,7 +31,7 @@ Roda nos planos gratuitos do Firebase (login e Firestore) e da Cloudflare (Worke
 
 ## Rodar
 
-`make dev` sobe os emuladores do Firebase, o Worker e o app, sem conta em nuvem nenhuma. `make test` roda os testes.
+`make install` e depois `make dev` sobem os emuladores do Firebase, o Worker e o app, sem conta em nuvem nenhuma (os emuladores precisam do Java 21). `make test` roda os testes. A publicação é configurada uma vez, como diz [docs/deploy.md](docs/deploy.md), e depois acontece a cada merge na `main`.
 
 ## Licença
 
