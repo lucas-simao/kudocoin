@@ -12,3 +12,4 @@ One file per subject, shaped by [_template.md](_template.md).
 | [languages.md](languages.md) | Portuguese and English on every screen, typed keys, what is never translated |
 | [seasons.md](seasons.md) | One open season, closed by an admin on the day the group meets |
 | [invites.md](invites.md) | One active invite link per organization, stored only as a hash |
+| [slack.md](slack.md) | One Slack app for every workspace, linking each person once, `/kudos` under the same rules as the web app |
