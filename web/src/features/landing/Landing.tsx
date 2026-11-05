@@ -62,14 +62,13 @@ export function Landing() {
             </li>
           ))}
         </ol>
+        <div className="flex flex-col gap-1 rounded-card border border-line-subtle bg-surface p-5">
+          <h3 className="font-semibold">{t('landing.slackTitle')}</h3>
+          <p className="text-sm leading-relaxed text-muted">{t('landing.slackBody')}</p>
+        </div>
       </section>
 
-      <footer className="flex flex-col gap-3 border-t border-line-subtle pt-6 text-sm text-subtle sm:flex-row sm:items-center sm:justify-between">
-        <p className="sm:flex-1">{t('landing.noMoney')}</p>
-        <a className="shrink-0 font-medium text-coin-text underline-offset-4 hover:underline" href="https://github.com/lucas-simao/kudocoin">
-          {t('landing.source')}
-        </a>
-      </footer>
+      <p className="border-t border-line-subtle pt-6 text-sm text-subtle">{t('landing.noMoney')}</p>
     </div>
   )
 }
