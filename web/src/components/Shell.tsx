@@ -4,6 +4,8 @@ import { LANGS, useI18n } from '@/i18n'
 import { Link } from '@/lib/router'
 import { Avatar } from './ui'
 
+export const REPO = 'https://github.com/lucas-simao/kudocoin'
+
 export function LanguageSwitch() {
   const { lang, setLang, t } = useI18n()
   return (
@@ -51,6 +53,17 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-10">{children}</main>
+      <footer className="mx-auto flex w-full max-w-5xl flex-wrap gap-x-5 gap-y-2 px-4 pt-2 pb-8 text-sm text-subtle">
+        <Link to={{ name: 'privacy' }} className="hover:text-ink hover:underline">
+          {t('footer.privacy')}
+        </Link>
+        <a href={`${REPO}/issues`} className="hover:text-ink hover:underline">
+          {t('footer.support')}
+        </a>
+        <a href={REPO} className="hover:text-ink hover:underline">
+          {t('footer.source')}
+        </a>
+      </footer>
     </div>
   )
 }

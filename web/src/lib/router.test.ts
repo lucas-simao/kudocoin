@@ -8,6 +8,7 @@ describe('router', () => {
       { name: 'orgs' },
       { name: 'new' },
       { name: 'account' },
+      { name: 'privacy' },
       { name: 'slackLink' },
       { name: 'join', token: 'abc_DEF-123' },
       { name: 'org', slug: 'team-a' },

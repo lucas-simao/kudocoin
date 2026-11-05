@@ -51,7 +51,7 @@ Without this, the app works as before and the Slack section stays hidden (`docs/
 1. At api.slack.com/apps → Create New App → **From a manifest**, pick a workspace of yours (it is only where the app is managed), and paste `slack/manifest.json`. If the Worker's address is not `kudocoin-api.lucas-simao01.workers.dev`, change it in both URLs first.
 2. **Basic Information → App Credentials**: copy the **Client ID**, the **Client Secret** and the **Signing Secret**.
 3. **Basic Information → Display Information → App icon**: upload `slack/icon-512.png`.
-4. **Manage Distribution → Activate Public Distribution**, so other workspaces can add the app. It does not need to be listed in Slack's directory.
+4. **Manage Distribution**: under *Installing Your App*, pick **Your landing page** with `https://kudocoin.pages.dev` (an install has to start from *Add to Slack* in an organization, so Kudocoin knows which one). For links, use `https://kudocoin.pages.dev/privacy` and `https://github.com/lucas-simao/kudocoin/issues`. Then **Activate Public Distribution**, so other workspaces can add the app. It does not need to be listed in Slack's directory.
 5. In GitHub, add:
 
 | Kind | Name | Value |

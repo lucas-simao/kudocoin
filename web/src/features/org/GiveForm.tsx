@@ -79,7 +79,7 @@ export function GiveForm({ org, members, myUid, left, kind = 'give' }: { org: Or
             <Input
               id={id}
               aria-describedby={describedBy}
-              className="text-center text-lg font-semibold tabular"
+              className="no-spin text-center text-lg font-semibold tabular"
               type="number"
               inputMode="numeric"
               min={1}

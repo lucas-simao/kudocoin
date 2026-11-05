@@ -9,12 +9,13 @@ import { MemberPage } from '@/features/member/MemberPage'
 import { OrgPage } from '@/features/org/OrgPage'
 import { CreateOrg } from '@/features/orgs/CreateOrg'
 import { OrgList } from '@/features/orgs/OrgList'
+import { PrivacyPage } from '@/features/privacy/PrivacyPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { SlackLinkPage } from '@/features/slack/SlackLinkPage'
 import { useI18n } from '@/i18n'
 import { navigate, type Route, useRoute } from '@/lib/router'
 
-const PUBLIC: Route['name'][] = ['home', 'join', 'slackLink', 'missing']
+const PUBLIC: Route['name'][] = ['home', 'join', 'slackLink', 'privacy', 'missing']
 
 export function App() {
   const route = useRoute()
@@ -50,6 +51,8 @@ function Screen({ route }: { route: Route }) {
       return <JoinPage token={route.token} />
     case 'slackLink':
       return <SlackLinkPage />
+    case 'privacy':
+      return <PrivacyPage />
     case 'account':
       return <AccountPage />
     case 'missing':
