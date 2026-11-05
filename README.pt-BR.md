@@ -15,7 +15,7 @@ Gratuito e de código aberto. Um servidor público atende todo mundo: entre com 
 3. Dê moedas com um motivo: "revisou meu PR às 23h". A sua cota do dia aparece enquanto você doa.
 4. Acompanhe o placar. No último dia, um admin fecha a temporada, a classificação final fica guardada e todo mundo recomeça do zero.
 
-Em português e inglês.
+Em português, inglês e espanhol.
 
 ## Estrutura
 

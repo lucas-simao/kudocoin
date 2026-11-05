@@ -66,7 +66,7 @@ export interface UserDoc {
   name: string
   picture: string | null
   github: string | null
-  lang: 'pt-BR' | 'en'
+  lang: 'pt-BR' | 'en' | 'es'
   createdAt: Date
 }
 

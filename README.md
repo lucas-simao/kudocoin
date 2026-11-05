@@ -15,7 +15,7 @@ Free and open source. One public server runs it for everyone: sign in with GitHu
 3. Give coins with a reason: "reviewed my PR at 11 pm". Your daily allowance is shown as you give.
 4. Follow the leaderboard. On the last day, an admin closes the season, the final standings are kept, and everyone starts again from zero.
 
-In Portuguese and English.
+In Portuguese, English and Spanish.
 
 ## Structure
 

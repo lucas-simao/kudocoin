@@ -5,7 +5,7 @@ import type { Firestore, Write } from '../firestore/client'
 import { as, type OrgDoc, paths, toDoc, type UserDoc, type UserOrgDoc } from '../repositories/documents'
 import { removalWrites } from './members'
 
-const LANGS = ['pt-BR', 'en'] as const
+const LANGS = ['pt-BR', 'en', 'es'] as const
 
 export interface Profile {
   lang?: string

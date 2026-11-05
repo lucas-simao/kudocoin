@@ -27,7 +27,7 @@ Every route under `/orgs/{orgId}` loads the caller's membership first and answer
 
 ## Web
 
-Screens import `@/features/{domain}`; the API client lives in `web/src/api`. Every word on screen goes through `t()`, with the keys in `web/src/i18n/locales/pt-BR.ts` and `en.ts` (`docs/decisions/languages.md`). A pull request that adds a key adds it in both. The API answers codes, and the web app turns them into words. Colors, fonts and radii come from `brand/theme.css`; never a hex in a component.
+Screens import `@/features/{domain}`; the API client lives in `web/src/api`. Every word on screen goes through `t()`, with the keys in `web/src/i18n/locales/pt-BR.ts`, `en.ts` and `es.ts` (`docs/decisions/languages.md`). A pull request that adds a key adds it in all three. The API answers codes, and the web app turns them into words. Colors, fonts and radii come from `brand/theme.css`; never a hex in a component.
 
 ## What the public sees
 

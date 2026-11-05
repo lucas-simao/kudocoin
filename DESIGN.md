@@ -42,7 +42,7 @@ The system's own fonts: no font files to ship or license. Headings use the round
 
 ## Words
 
-- Every text comes from `t()` in both languages (`docs/decisions/languages.md`).
+- Every text comes from `t()` in every language (`docs/decisions/languages.md`).
 - What people typed (names, reasons, the coin's name, the prize) is shown as typed.
 - A refusal says what to do: "You can only give 2 more today", not "Error 422".
 - A destructive action asks in place, with confirm focused: Enter confirms, Esc leaves it.

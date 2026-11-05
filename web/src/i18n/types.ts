@@ -12,4 +12,4 @@ type Paths<T> = {
 
 export type Key = Paths<Messages>
 
-export type Lang = 'pt-BR' | 'en'
+export type Lang = 'pt-BR' | 'en' | 'es'
