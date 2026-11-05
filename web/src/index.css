@@ -31,12 +31,34 @@
     text-wrap: pretty;
   }
 
+  /* Tailwind leaves buttons with the arrow cursor; anything clickable shows the hand. */
+  button:not(:disabled),
+  [role='button'],
+  select:not(:disabled),
+  summary,
+  label:has(input[type='checkbox']:not(:disabled)),
+  input[type='checkbox']:not(:disabled) {
+    cursor: pointer;
+  }
+
   ::selection {
     background: var(--color-coin-soft);
   }
 }
 
 @layer utilities {
+  /* A number field with its own − and +: the browser's small arrows go. */
+  .no-spin {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .no-spin::-webkit-inner-spin-button,
+  .no-spin::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   .tabular {
     font-variant-numeric: tabular-nums;
   }

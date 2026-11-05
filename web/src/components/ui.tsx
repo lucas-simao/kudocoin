@@ -95,8 +95,27 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={`${CONTROL} min-h-20 py-2.5 ${props.className ?? ''}`} />
 }
 
+/** The browser's own arrow sits against the edge and differs on every system; this one has room and follows the theme. */
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${CONTROL} ${props.className ?? ''}`} />
+  return (
+    <div className="relative">
+      <select {...props} className={`${CONTROL} appearance-none pr-11 ${props.className ?? ''}`} />
+      <svg
+        aria-hidden
+        viewBox="0 0 20 20"
+        width="18"
+        height="18"
+        className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-subtle"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m5 7.5 5 5 5-5" />
+      </svg>
+    </div>
+  )
 }
 
 export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
