@@ -13,6 +13,10 @@ export interface OrgDoc {
   inviteHash: string | null
   memberCount: number
   createdAt: Date
+  /** Sprint length in weeks; null or absent: seasons close by hand (docs/decisions/sprints.md). */
+  sprintWeeks?: number | null
+  /** When the hourly job closes the open season; null when it closes by hand. */
+  closesAt?: Date | null
   /** The Slack workspace playing here, if any (docs/decisions/slack.md). Members see its name. */
   slack?: OrgSlack | null
 }
@@ -46,6 +50,8 @@ export interface BoardRow {
 export interface SeasonDoc {
   number: number
   startedAt: Date
+  /** The season's first day, YYYY-MM-DD, in the organization's time zone. Older seasons only have startedAt. */
+  startsOn?: string
   /** The season's last day, YYYY-MM-DD, in the organization's time zone. */
   endsOn: string
   prize: string

@@ -22,6 +22,8 @@ export interface Org {
   seasonId: string
   ownerUid: string
   memberCount: number
+  /** Sprint length in weeks; absent or null: seasons close by hand (docs/decisions/sprints.md). */
+  sprintWeeks?: number | null
   /** The Slack workspace playing here, if any (docs/decisions/slack.md). */
   slack?: { teamId: string; teamName: string; announce: boolean } | null
 }
@@ -48,6 +50,8 @@ export interface BoardRow {
 export interface Season {
   id: string
   number: number
+  /** First day; seasons from before sprints do not have it. */
+  startsOn?: string
   endsOn: string
   prize: string
   status: 'open' | 'closed'

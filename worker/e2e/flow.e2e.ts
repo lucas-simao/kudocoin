@@ -53,6 +53,25 @@ async function read(path: string): Promise<Record<string, any> | undefined> {
   return doc.fields
 }
 
+/** Changes fields straight in the emulator: how the tests move a sprint's end into the past. */
+async function write(path: string, fields: Record<string, unknown>): Promise<void> {
+  const mask = Object.keys(fields).map((name) => `updateMask.fieldPaths=${name}`).join('&')
+  const response = await fetch(`${FIRESTORE}/${path}?${mask}`, {
+    method: 'PATCH',
+    headers: { authorization: 'Bearer owner', 'content-type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  })
+  if (!response.ok) throw new Error(`write ${path}: ${response.status}`)
+}
+
+/** Runs the hourly job now (wrangler dev --test-scheduled). */
+async function hourly(): Promise<void> {
+  const response = await fetch(`${API}/__scheduled?cron=7+*+*+*+*`)
+  if (!response.ok) throw new Error(`scheduled: ${response.status}`)
+}
+
+const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
+
 const int = (field: { integerValue?: string } | undefined) => Number(field?.integerValue ?? NaN)
 
 let ana: Person
@@ -269,6 +288,43 @@ describe('the whole flow', () => {
     // The first give of the new season starts from zero.
     const give = await call(carla, 'POST', `/api/orgs/${orgId}/give`, { to: bruno.uid, amount: 1, reason: 'New season', key: 'new-season-give-0001' })
     expect(give.body).toMatchObject({ balance: 1 })
+  })
+
+  it('closes a sprint by itself once its last day ends, and starts the next without a gap', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+    expect((await call(ana, 'PATCH', `/api/orgs/${orgId}`, { sprintWeeks: 5 })).body.error).toBe('invalid_request')
+    expect((await call(bruno, 'PATCH', `/api/orgs/${orgId}`, { sprintWeeks: 2 })).status).toBe(403)
+    expect((await call(ana, 'PATCH', `/api/orgs/${orgId}`, { sprintWeeks: 2, season: { endsOn: today } })).status).toBe(200)
+    let org = (await read(`orgs/${orgId}`))!
+    expect(int(org.sprintWeeks)).toBe(2)
+    // The season closes as its last day ends in São Paulo (UTC−3).
+    expect(Date.parse(org.closesAt.timestampValue)).toBe(Date.parse(`${addDays(today, 1)}T03:00:00Z`))
+
+    // Not due yet: the job leaves it alone.
+    const sprintId = org.seasonId.stringValue
+    await hourly()
+    expect((await read(`orgs/${orgId}`))!.seasonId.stringValue).toBe(sprintId)
+
+    // As if the clock had moved past its last day.
+    const yesterday = addDays(today, -1)
+    await write(`orgs/${orgId}/seasons/${sprintId}`, { endsOn: { stringValue: yesterday } })
+    await write(`orgs/${orgId}`, { closesAt: { timestampValue: new Date(Date.now() - 60_000).toISOString() } })
+    const number = int((await read(`orgs/${orgId}/seasons/${sprintId}`))!.number)
+    await hourly()
+    await hourly() // a second run finds nothing due
+    org = (await read(`orgs/${orgId}`))!
+    expect(org.seasonId.stringValue).not.toBe(sprintId)
+    expect((await read(`orgs/${orgId}/seasons/${sprintId}`))!.status.stringValue).toBe('closed')
+    const sprint = (await read(`orgs/${orgId}/seasons/${org.seasonId.stringValue}`))!
+    expect(int(sprint.number)).toBe(number + 1)
+    expect(sprint.startsOn.stringValue).toBe(today)
+    expect(sprint.endsOn.stringValue).toBe(addDays(yesterday, 14))
+    expect(sprint.prize.stringValue).toBe('Tacos')
+    expect(Date.parse(org.closesAt.timestampValue)).toBe(Date.parse(`${addDays(yesterday, 15)}T03:00:00Z`))
+
+    // Back to closing by hand: nothing is scheduled.
+    expect((await call(ana, 'PATCH', `/api/orgs/${orgId}`, { sprintWeeks: null })).status).toBe(200)
+    expect('nullValue' in (await read(`orgs/${orgId}`))!.closesAt).toBe(true)
   })
 
   it('hands over ownership, removes a member, and lets someone leave', async () => {

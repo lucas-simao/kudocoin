@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export WRANGLER_SEND_METRICS=false
-npx wrangler dev --env dev --port 18611 --ip 127.0.0.1 > /tmp/kudocoin-worker.log 2>&1 &
+npx wrangler dev --env dev --test-scheduled --port 18611 --ip 127.0.0.1 > /tmp/kudocoin-worker.log 2>&1 &
 worker=$!
 trap 'kill $worker 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do

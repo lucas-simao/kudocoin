@@ -11,6 +11,7 @@ import { join, newInvite, previewInvite, turnOffInvite } from './services/invite
 import { removeMember, setRole } from './services/members'
 import { createOrg, resolveSlug, updateOrg } from './services/orgs'
 import { closeSeason } from './services/seasons'
+import { closeDueSeasons } from './scheduled'
 import { slashCommand } from './slack/command'
 import { disconnect, installUrl, link, linkPreview, myLinks, oauthCallback, setAnnounce, slackOn, unlink } from './slack/service'
 
@@ -178,5 +179,11 @@ export default {
       console.error('unexpected', error instanceof Error ? error.message : 'unknown')
       return json(500, { error: 'internal' }, cors)
     }
+  },
+
+  /** The hourly Cron Trigger (wrangler.toml): seasons that close by themselves. */
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    const { closed, failed } = await closeDueSeasons(new Firestore(env))
+    if (closed || failed) console.log('seasons closed', closed, 'failed', failed)
   },
 }

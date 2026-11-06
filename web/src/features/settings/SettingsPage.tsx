@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError, type Role, type Settings } from '@/api/client'
 import { useSession } from '@/auth/session'
-import { Avatar, Button, Card, ConfirmButton, Field, Heading, Input, Notice, Spinner, Toggle } from '@/components/ui'
+import { Avatar, Button, Card, ConfirmButton, Field, Heading, Input, Notice, Select, Spinner, Toggle } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { type Member, type Org, type Season, todayIn, useInviteToken, useMembers, useSeason } from '@/lib/data'
+import { addDays } from '@/lib/days'
 import { Link, navigate } from '@/lib/router'
 import { GiveForm } from '../org/GiveForm'
 import { WithOrg } from '../org/OrgPage'
@@ -67,6 +68,7 @@ function General({ org, season }: { org: Org; season: Season }) {
   const [settings, setSettings] = useState<Settings>(org.settings)
   const [endsOn, setEndsOn] = useState(season.endsOn)
   const [prize, setPrize] = useState(season.prize)
+  const [sprintWeeks, setSprintWeeks] = useState<number | null>(org.sprintWeeks ?? null)
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
   const { problem, run } = useAction()
@@ -92,8 +94,30 @@ function General({ org, season }: { org: Org; season: Season }) {
         </Field>
       </div>
       <Toggle checked={settings.reasonRequired} onChange={(value) => set('reasonRequired', value)} label={t('create.reasonRequired')} />
+      <Field label={t('settings.cadence')} hint={sprintWeeks ? t('settings.sprintHint') : undefined}>
+        {(id, describedBy) => (
+          <Select
+            id={id}
+            aria-describedby={describedBy}
+            value={sprintWeeks ?? 0}
+            onChange={(event) => {
+              setSaved(false)
+              setSprintWeeks(Number(event.target.value) || null)
+            }}
+          >
+            <option value={0}>{t('settings.cadenceManual')}</option>
+            {([1, 2, 3, 4] as const).map((weeks) => (
+              <option key={weeks} value={weeks}>
+                {t(`settings.cadence${weeks}`)}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
       <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
-        <Field label={t('create.endsOn')}>{(id) => <Input id={id} type="date" value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}</Field>
+        <Field label={sprintWeeks ? t('settings.sprintEndsOn') : t('create.endsOn')}>
+          {(id) => <Input id={id} type="date" value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}
+        </Field>
         <Field label={t('create.prize')}>{(id) => <Input id={id} maxLength={200} value={prize} onChange={(event) => setPrize(event.target.value)} />}</Field>
       </div>
       {problem ? <Notice tone="error">{problem}</Notice> : null}
@@ -108,6 +132,7 @@ function General({ org, season }: { org: Org; season: Season }) {
                 name,
                 settings,
                 season: { ...(endsOn !== season.endsOn ? { endsOn } : {}), prize },
+                ...(sprintWeeks !== (org.sprintWeeks ?? null) ? { sprintWeeks } : {}),
               }),
             )
             setBusy(false)
@@ -297,14 +322,20 @@ function CloseSeason({ org, season }: { org: Org; season: Season }) {
   const [prize, setPrize] = useState(season.prize)
   const { problem, run } = useAction()
   const ready = today >= season.endsOn
+  const weeks = org.sprintWeeks ?? null
   return (
     <Card className="flex flex-col gap-4">
       <Heading>{t('settings.closeSeason')}</Heading>
-      <p className="text-sm text-muted">{t('settings.closeHint')}</p>
+      <p className="text-sm text-muted">{t(weeks ? 'settings.sprintCloseHint' : 'settings.closeHint')}</p>
       {ready ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-[14rem_1fr]">
-            <Field label={t('settings.nextEndsOn')}>{(id) => <Input id={id} type="date" min={today} value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}</Field>
+          {weeks ? (
+            <p className="text-sm">{t('settings.nextSprint', { start: date(addDays(season.endsOn, 1)), end: date(addDays(season.endsOn, 7 * weeks)) })}</p>
+          ) : null}
+          <div className={`grid gap-4 ${weeks ? '' : 'sm:grid-cols-[14rem_1fr]'}`}>
+            {weeks ? null : (
+              <Field label={t('settings.nextEndsOn')}>{(id) => <Input id={id} type="date" min={today} value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}</Field>
+            )}
             <Field label={t('settings.nextPrize')}>{(id) => <Input id={id} maxLength={200} value={prize} onChange={(event) => setPrize(event.target.value)} />}</Field>
           </div>
           {problem ? <Notice tone="error">{problem}</Notice> : null}
@@ -316,7 +347,7 @@ function CloseSeason({ org, season }: { org: Org; season: Season }) {
               confirmLabel={t('settings.closeSeason')}
               cancelLabel={t('common.cancel')}
               onConfirm={async () => {
-                if (await run(() => api.closeSeason(org.id, { endsOn, prize }))) navigate({ name: 'org', slug: org.slug })
+                if (await run(() => api.closeSeason(org.id, weeks ? { prize } : { endsOn, prize }))) navigate({ name: 'org', slug: org.slug })
               }}
             />
           </div>
