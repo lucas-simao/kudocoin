@@ -13,3 +13,4 @@ One file per subject, shaped by [_template.md](_template.md).
 | [seasons.md](seasons.md) | One open season, closed by an admin on the day the group meets |
 | [invites.md](invites.md) | One active invite link per organization, stored only as a hash |
 | [slack.md](slack.md) | One Slack app for every workspace, linking each person once, `/kudos` under the same rules as the web app |
+| [sprints.md](sprints.md) | Seasons by hand or every sprint of 1–4 weeks, closed by an hourly job |
