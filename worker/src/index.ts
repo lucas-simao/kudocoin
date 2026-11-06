@@ -11,6 +11,7 @@ import { join, newInvite, previewInvite, turnOffInvite } from './services/invite
 import { removeMember, setRole } from './services/members'
 import { createOrg, resolveSlug, updateOrg } from './services/orgs'
 import { closeSeason } from './services/seasons'
+import { cancelBounty, offerBounty, payBounty } from './services/bounties'
 import { closeDueSeasons } from './scheduled'
 import { slashCommand } from './slack/command'
 import { disconnect, installUrl, link, linkPreview, myLinks, oauthCallback, setAnnounce, slackOn, unlink } from './slack/service'
@@ -97,6 +98,12 @@ const routes: [method: string, pattern: string, handler: Handler][] = [
     await unlink(store, caller, params.id)
     return { ok: true }
   }],
+
+  // Bounties: docs/decisions/bounties.md.
+  ['POST', '/api/orgs/:orgId/bounties', ({ store, caller, params, body }) => offerBounty(store, params.orgId, caller, body as never)],
+  ['POST', '/api/orgs/:orgId/bounties/:bountyId/pay', ({ store, caller, params, body }) =>
+    payBounty(store, params.orgId, caller, params.bountyId, body.to)],
+  ['POST', '/api/orgs/:orgId/bounties/:bountyId/cancel', ({ store, caller, params }) => cancelBounty(store, params.orgId, caller, params.bountyId)],
 
   ['POST', '/api/orgs/:orgId/seasons/close', async ({ store, caller, params, body }) => {
     await requireRole(store, params.orgId, caller, 'admin')

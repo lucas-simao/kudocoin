@@ -17,6 +17,8 @@ export interface OrgDoc {
   sprintWeeks?: number | null
   /** When the hourly job closes the open season; null when it closes by hand. */
   closesAt?: Date | null
+  /** The last bounty's number (docs/decisions/bounties.md). */
+  bountyCount?: number
   /** The Slack workspace playing here, if any (docs/decisions/slack.md). Members see its name. */
   slack?: OrgSlack | null
 }
@@ -39,6 +41,8 @@ export interface MemberDoc {
   balance: number
   given: DayCount
   received: DayCount
+  /** How many bounties this member has open; at most bounties.ts MAX_OPEN. */
+  openBounties?: number
 }
 
 export interface BoardRow {
@@ -61,7 +65,7 @@ export interface SeasonDoc {
   standings?: (BoardRow & { uid: string; place: number })[]
 }
 
-export type EntryKind = 'give' | 'award' | 'correction'
+export type EntryKind = 'give' | 'award' | 'correction' | 'bounty'
 
 export interface LedgerDoc {
   kind: EntryKind
@@ -97,6 +101,27 @@ export interface InviteDoc {
   createdAt: Date
 }
 
+/** Coins offered for a task (docs/decisions/bounties.md). */
+export interface BountyDoc {
+  /** Its number in the organization: #7. */
+  number: number
+  by: string
+  byName: string
+  amount: number
+  task: string
+  status: 'open' | 'paid' | 'cancelled'
+  /** The day it was offered, in the organization's time zone. */
+  day: string
+  /** Its last day to be paid. */
+  expiresOn: string
+  createdAt: Date
+  paidTo?: string
+  paidToName?: string
+  paidAt?: Date
+  entryId?: string
+  cancelledAt?: Date
+}
+
 /** One Slack workspace and the organization it plays in. Only the Worker reads it. */
 export interface SlackTeamDoc {
   orgId: string
@@ -127,6 +152,7 @@ export const paths = {
   member: (orgId: string, uid: string) => `orgs/${orgId}/members/${uid}`,
   season: (orgId: string, seasonId: string) => `orgs/${orgId}/seasons/${seasonId}`,
   entry: (orgId: string, entryId: string) => `orgs/${orgId}/ledger/${entryId}`,
+  bounty: (orgId: string, bountyId: string) => `orgs/${orgId}/bounties/${bountyId}`,
   adminInvite: (orgId: string) => `orgs/${orgId}/admin/invite`,
   invite: (hash: string) => `invites/${hash}`,
   slackTeam: (teamId: string) => `slackTeams/${teamId}`,

@@ -61,7 +61,7 @@ export interface Season {
 
 export interface Entry {
   id: string
-  kind: 'give' | 'award' | 'correction'
+  kind: 'give' | 'award' | 'correction' | 'bounty'
   from: string
   fromName: string
   to: string
@@ -182,6 +182,30 @@ export function useLedger(orgId: string | undefined, uid?: string, size = 20): E
     return () => stops.forEach((stop) => stop())
   }, [orgId, uid, size])
   return entries
+}
+
+/** Coins offered for a task (docs/decisions/bounties.md). */
+export interface Bounty {
+  id: string
+  number: number
+  by: string
+  byName: string
+  amount: number
+  task: string
+  status: 'open' | 'paid' | 'cancelled'
+  /** Its last day to be paid, YYYY-MM-DD. */
+  expiresOn: string
+}
+
+export function useOpenBounties(orgId: string | undefined): Bounty[] | undefined {
+  const [bounties, setBounties] = useState<Bounty[]>()
+  useEffect(() => {
+    if (!orgId) return
+    return onSnapshot(query(collection(db, `orgs/${orgId}/bounties`), where('status', '==', 'open')), (snapshot) =>
+      setBounties(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<Bounty, 'id'>) })).sort((a, b) => a.number - b.number)),
+    )
+  }, [orgId])
+  return bounties
 }
 
 export function usePastSeasons(orgId: string | undefined): Season[] | undefined {

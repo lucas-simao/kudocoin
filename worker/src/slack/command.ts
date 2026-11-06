@@ -13,6 +13,7 @@ import { fill, isSlackError, SLACK_MESSAGES, slackLang } from './messages'
 import { escape, parseRequest, plainText } from './parse'
 import { slackOn, webOrigin } from './service'
 import { summary } from './summary'
+import { bountyCommand } from './bounties'
 
 export interface Command {
   teamId: string
@@ -111,6 +112,9 @@ export async function answer(env: Env, store: Firestore, command: Command): Prom
   const orgUrl = `${web}/o/${org.slug}`
   if (request.kind === 'help') return ephemeral(fill(words.help, { url: orgUrl }))
   if (request.kind === 'summary') return summary(store, team.orgId, org, giverLink.uid, lang, request.share, orgUrl)
+  if (request.kind === 'bounties' || request.kind === 'bountyOffer' || request.kind === 'bountyPay' || request.kind === 'bountyCancel') {
+    return bountyCommand(store, team.orgId, org, giverLink.uid, command, request, words)
+  }
   if (!kudos) return ephemeral(`${words.unknown}\n\n${fill(words.help, { url: orgUrl })}`)
   if (kudos.slackUserId === command.userId) return ephemeral(words.errors.self_give)
   const giver = `<@${command.userId}>`

@@ -92,6 +92,10 @@ export const api = {
   removeMember: (orgId: string, uid: string) => request<unknown>('DELETE', `/api/orgs/${orgId}/members/${uid}`),
   closeSeason: (orgId: string, next: { endsOn?: string; prize: string }) =>
     request<{ seasonId: string }>('POST', `/api/orgs/${orgId}/seasons/close`, next),
+  offerBounty: (orgId: string, input: { amount: number; task: string; key: string }) =>
+    request<{ bountyId: string; number: number; allowanceLeft: number }>('POST', `/api/orgs/${orgId}/bounties`, input),
+  payBounty: (orgId: string, bountyId: string, to: string) => request<{ balance: number }>('POST', `/api/orgs/${orgId}/bounties/${bountyId}/pay`, { to }),
+  cancelBounty: (orgId: string, bountyId: string) => request<{ refunded: boolean }>('POST', `/api/orgs/${orgId}/bounties/${bountyId}/cancel`),
   slackInstall: (orgId: string) => request<{ url: string }>('POST', `/api/orgs/${orgId}/slack/install`),
   slackAnnounce: (orgId: string, announce: boolean) => request<unknown>('PATCH', `/api/orgs/${orgId}/slack`, { announce }),
   slackDisconnect: (orgId: string) => request<unknown>('DELETE', `/api/orgs/${orgId}/slack`),

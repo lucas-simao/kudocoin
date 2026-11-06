@@ -6,7 +6,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 
 let env: RulesTestEnvironment
@@ -25,6 +25,7 @@ beforeAll(async () => {
       await setDoc(doc(db, `orgs/${orgId}`), { name: orgId, seasonId: 's1' })
       await setDoc(doc(db, `orgs/${orgId}/seasons/s1`), { board: {} })
       await setDoc(doc(db, `orgs/${orgId}/ledger/e1`), { amount: 1 })
+      await setDoc(doc(db, `orgs/${orgId}/bounties/b1`), { amount: 1, status: 'open' })
       await setDoc(doc(db, `orgs/${orgId}/admin/invite`), { token: 'secret' })
       for (const [uid, role] of Object.entries(people)) {
         await setDoc(doc(db, `orgs/${orgId}/members/${uid}`), { uid, role, balance: 0 })
@@ -52,6 +53,7 @@ describe('a member', () => {
     await assertSucceeds(getDocs(collection(db, 'orgs/org-a/members')))
     await assertSucceeds(getDoc(doc(db, 'orgs/org-a/seasons/s1')))
     await assertSucceeds(getDocs(query(collection(db, 'orgs/org-a/ledger'), limit(20))))
+    await assertSucceeds(getDocs(query(collection(db, 'orgs/org-a/bounties'), where('status', '==', 'open'))))
   })
 
   it('reads nothing of another organization', async () => {
@@ -60,6 +62,7 @@ describe('a member', () => {
     await assertFails(getDocs(collection(db, 'orgs/org-b/members')))
     await assertFails(getDoc(doc(db, 'orgs/org-b/seasons/s1')))
     await assertFails(getDocs(collection(db, 'orgs/org-b/ledger')))
+    await assertFails(getDocs(collection(db, 'orgs/org-b/bounties')))
   })
 
   it('cannot read the invite link unless an admin', async () => {
