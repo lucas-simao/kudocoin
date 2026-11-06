@@ -18,6 +18,7 @@ import {
 } from '@/lib/data'
 import { Link } from '@/lib/router'
 import { startTour, tourSeen } from '../tour/tour'
+import { Bounties } from './Bounties'
 import { GiveForm } from './GiveForm'
 
 /** Loads an organization by its address and hands it to `children`, for every screen under /o/<slug>. */
@@ -121,6 +122,7 @@ function OrgBoard({ org }: { org: Org }) {
             <Heading>{t('give.title')}</Heading>
             {members && user ? <GiveForm org={org} members={members} myUid={user.uid} left={left} /> : <Spinner label={t('common.loading')} />}
           </Card>
+          {members && me ? <Bounties org={org} members={members} me={me} left={left} /> : null}
         </div>
       </div>
 
@@ -193,7 +195,14 @@ export function EntryList({ entries, org }: { entries: Entry[]; org: Org }) {
           to: entry.toName || t('common.formerMember'),
           amount: `${number(entry.amount)} ${org.settings.coinName}`,
         }
-        const line = entry.kind === 'give' ? t('org.gave', vars) : entry.kind === 'award' ? t('org.awarded', vars) : t('org.corrected', vars)
+        const line =
+          entry.kind === 'give'
+            ? t('org.gave', vars)
+            : entry.kind === 'award'
+              ? t('org.awarded', vars)
+              : entry.kind === 'bounty'
+                ? t('org.paidBounty', vars)
+                : t('org.corrected', vars)
         return (
           <li key={entry.id} className="flex flex-col gap-1 py-3">
             <p className="text-[0.9375rem]">{line}</p>

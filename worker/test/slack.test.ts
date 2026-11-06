@@ -94,6 +94,17 @@ describe('what /kudos is asked', () => {
     expect(parseRequest('<@U123|ana> 2 thanks')).toEqual({ kind: 'give', kudos: { slackUserId: 'U123', amount: 2, reason: 'thanks' } })
   })
 
+  it('reads the bounty commands', () => {
+    expect(parseRequest('bounties')).toEqual({ kind: 'bounties' })
+    expect(parseRequest('recompensas')).toEqual({ kind: 'bounties' })
+    expect(parseRequest('bounty 3 fix the flaky test')).toEqual({ kind: 'bountyOffer', amount: 3, task: 'fix the flaky test' })
+    expect(parseRequest('recompensa 2 arrumar o deploy')).toEqual({ kind: 'bountyOffer', amount: 2, task: 'arrumar o deploy' })
+    expect(parseRequest('bounty pay #7 <@U123|bruno>')).toEqual({ kind: 'bountyPay', number: 7, slackUserId: 'U123' })
+    expect(parseRequest('recompensa pagar 7 <@U123>')).toEqual({ kind: 'bountyPay', number: 7, slackUserId: 'U123' })
+    expect(parseRequest('bounty cancel #7')).toEqual({ kind: 'bountyCancel', number: 7 })
+    expect(parseRequest('bounty fix it')).toEqual({ kind: 'unknown' })
+  })
+
   it('does not guess', () => {
     expect(parseRequest('summary please now')).toEqual({ kind: 'unknown' })
     expect(parseRequest('thanks @ana')).toEqual({ kind: 'unknown' })

@@ -43,6 +43,11 @@ service cloud.firestore {
         allow read: if isMember(orgId);
       }
 
+      // Bounties (docs/decisions/bounties.md): read like the ledger.
+      match /bounties/{bountyId} {
+        allow read: if isMember(orgId);
+      }
+
       // The active invite link, for admins to copy again (docs/decisions/invites.md).
       match /admin/{docId} {
         allow read: if isAdmin(orgId);

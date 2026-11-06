@@ -21,12 +21,20 @@ export type Request =
   | { kind: 'help' }
   | { kind: 'summary'; share: boolean }
   | { kind: 'give'; kudos: Kudos }
+  | { kind: 'bounties' }
+  | { kind: 'bountyOffer'; amount: number; task: string }
+  | { kind: 'bountyPay'; number: number; slackUserId: string }
+  | { kind: 'bountyCancel'; number: number }
   | { kind: 'unknown' }
 
 // The words are English in the docs and the help, and also understood in Portuguese and Spanish.
 const HELP = ['help', 'ajuda', 'ayuda', '?']
 const SUMMARY = ['summary', 'resumo', 'resumen', 'placar', 'marcador', 'leaderboard']
 const SHARE = ['share', 'compartilhar', 'compartir']
+const BOUNTIES = ['bounties', 'recompensas']
+const BOUNTY_PAY = /^\s*(?:bounty|recompensa)\s+(?:pay|pagar)\s+#?(\d{1,6})\s+<@([UW][A-Z0-9]{2,20})(?:\|[^>]*)?>\s*$/i
+const BOUNTY_CANCEL = /^\s*(?:bounty|recompensa)\s+(?:cancel|cancelar)\s+#?(\d{1,6})\s*$/i
+const BOUNTY_OFFER = /^\s*(?:bounty|recompensa)\s+(\d{1,6})\s+([\s\S]+)$/i
 
 /** What `/kudos` was asked: nothing or help, the summary (only for you, or shared), or a give. */
 export function parseRequest(text: string): Request {
@@ -35,6 +43,14 @@ export function parseRequest(text: string): Request {
   if (SUMMARY.includes(words[0]) && (words.length === 1 || (words.length === 2 && SHARE.includes(words[1])))) {
     return { kind: 'summary', share: words.length === 2 }
   }
+  // Bounties (docs/decisions/bounties.md): `bounties`, `bounty pay #7 @bruno`, `bounty cancel #7`, `bounty 3 task`.
+  if (words.length === 1 && BOUNTIES.includes(words[0])) return { kind: 'bounties' }
+  const pay = BOUNTY_PAY.exec(text)
+  if (pay) return { kind: 'bountyPay', number: Number(pay[1]), slackUserId: pay[2] }
+  const cancel = BOUNTY_CANCEL.exec(text)
+  if (cancel) return { kind: 'bountyCancel', number: Number(cancel[1]) }
+  const offer = BOUNTY_OFFER.exec(text)
+  if (offer) return { kind: 'bountyOffer', amount: Number(offer[1]), task: offer[2].trim() }
   const kudos = parseKudos(text)
   return kudos ? { kind: 'give', kudos } : { kind: 'unknown' }
 }

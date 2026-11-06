@@ -19,7 +19,8 @@ import { boardField } from './orgs'
 import { checkGive, countOn, dateIn, MAX_REASON } from './rules'
 
 export interface Movement {
-  kind: EntryKind
+  /** Bounties are paid by services/bounties.ts. */
+  kind: Exclude<EntryKind, 'bounty'>
   to: string
   amount: number
   reason: string

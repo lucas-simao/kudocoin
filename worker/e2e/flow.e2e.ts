@@ -256,6 +256,24 @@ describe('the whole flow', () => {
     expect(quiet.reply).toMatchObject({ response_type: 'ephemeral', text: 'Você deu 1 Kudocoin para <@U0ANA>. Hoje ainda pode dar 2.' })
   })
 
+  it('offers, lists and pays bounties from /kudos', async () => {
+    const offered = (await kudos(API, slack, BRUNO_SLACK, 'bounty 1 fix the flaky test')).reply!
+    const number = Number(/#(\d+)/.exec(offered.text)![1])
+    expect(offered.text).toContain('fix the flaky test')
+    const list = (await kudos(API, slack, ANA_SLACK, 'bounties')).reply!
+    expect(list.response_type).toBe('ephemeral')
+    expect(list.text).toContain(`#${number} · 1 Kudocoin · fix the flaky test · de Bruno`)
+
+    const before = int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)
+    expect((await kudos(API, slack, BRUNO_SLACK, `bounty pay #${number} <@U0BRUNO|bruno>`)).reply!.text).toBe('Você não pode dar moedas para si mesmo.')
+    const paid = (await kudos(API, slack, BRUNO_SLACK, `bounty pay #${number} <@U0ANA|ana>`)).reply!
+    expect(paid.text).toContain(`<@U0BRUNO> pagou a recompensa #${number} (1 Kudocoin) para <@U0ANA>`)
+    expect(int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)).toBe(before + 1)
+    expect((await kudos(API, slack, BRUNO_SLACK, `bounty pay #${number} <@U0ANA|ana>`)).reply!.text).toBe('Essa recompensa já foi paga ou cancelada.')
+    expect((await kudos(API, slack, BRUNO_SLACK, 'bounty cancel #999')).reply!.text).toBe('Não existe recompensa #999 aqui.')
+    expect((await kudos(API, slack, BRUNO_SLACK, 'bounties')).reply!.text).toContain('Nenhuma recompensa aberta')
+  })
+
   it('lets a person unlink, and an admin disconnect the workspace', async () => {
     const mine = await call(ana, 'GET', '/api/me/slack')
     expect(mine.body.links).toEqual([{ id: `${TEAM.id}_U0ANA`, teamName: TEAM.name, slackName: 'ana' }])
@@ -325,6 +343,52 @@ describe('the whole flow', () => {
     // Back to closing by hand: nothing is scheduled.
     expect((await call(ana, 'PATCH', `/api/orgs/${orgId}`, { sprintWeeks: null })).status).toBe(200)
     expect('nullValue' in (await read(`orgs/${orgId}`))!.closesAt).toBe(true)
+  })
+
+  it('offers a bounty from the allowance, pays it once, and gives it back if cancelled the same day', async () => {
+    const given = async (who: Person) => int((await read(`orgs/${orgId}/members/${who.uid}`))!.given.mapValue.fields.amount)
+    const offer = (who: Person, amount: number, task: string, key: string) => call(who, 'POST', `/api/orgs/${orgId}/bounties`, { amount, task, key })
+    expect((await offer(carla, 9, 'too much', 'bounty-key-000000001')).body.error).toBe('amount_invalid')
+    expect((await offer(carla, 1, '', 'bounty-key-000000001')).body.error).toBe('reason_required')
+
+    const carlaGiven = await given(carla)
+    const first = await offer(carla, 2, 'Write the onboarding guide', 'bounty-key-000000002')
+    expect(first.status).toBe(200)
+    expect(await given(carla)).toBe(carlaGiven + 2)
+    // The same key again does not offer twice.
+    expect((await offer(carla, 2, 'Write the onboarding guide', 'bounty-key-000000002')).body.bountyId).toBe('bounty-key-000000002')
+    expect(await given(carla)).toBe(carlaGiven + 2)
+    expect(int((await read(`orgs/${orgId}/members/${carla.uid}`))!.openBounties)).toBe(1)
+
+    const pay = (who: Person, id: string, to: string) => call(who, 'POST', `/api/orgs/${orgId}/bounties/${id}/pay`, { to })
+    expect((await pay(bruno, 'bounty-key-000000002', bruno.uid)).body.error).toBe('forbidden')
+    expect((await pay(carla, 'bounty-key-000000002', carla.uid)).body.error).toBe('self_give')
+    // The coins land in the open sprint's leaderboard; a balance from an earlier sprint counts as zero.
+    const board = async () => {
+      const seasonId = (await read(`orgs/${orgId}`))!.seasonId.stringValue
+      return int((await read(`orgs/${orgId}/seasons/${seasonId}`))!.board.mapValue.fields[bruno.uid]?.mapValue.fields.balance ?? { integerValue: '0' })
+    }
+    const before = await board()
+    const paid = await pay(carla, 'bounty-key-000000002', bruno.uid)
+    expect(paid.body.balance).toBe(before + 2)
+    expect(await board()).toBe(before + 2)
+    const entry = (await read(`orgs/${orgId}/ledger/bounty-bounty-key-000000002`))!
+    expect(entry.kind.stringValue).toBe('bounty')
+    expect(entry.reason.stringValue).toBe('Write the onboarding guide')
+    expect((await pay(carla, 'bounty-key-000000002', bruno.uid)).body.error).toBe('bounty_closed')
+    expect(int((await read(`orgs/${orgId}/members/${carla.uid}`))!.openBounties)).toBe(0)
+
+    // Cancelled the same day: the allowance comes back.
+    expect((await offer(carla, 1, 'Order the pizza', 'bounty-key-000000003')).status).toBe(200)
+    const cancelled = await call(carla, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000003/cancel`)
+    expect(cancelled.body).toEqual({ refunded: true })
+    expect(await given(carla)).toBe(carlaGiven + 2)
+
+    // Expired: only cancelling is left. An admin may do it.
+    expect((await offer(carla, 1, 'Fix the printer', 'bounty-key-000000004')).status).toBe(200)
+    await write(`orgs/${orgId}/bounties/bounty-key-000000004`, { expiresOn: { stringValue: '2020-01-01' } })
+    expect((await pay(carla, 'bounty-key-000000004', bruno.uid)).body.error).toBe('bounty_expired')
+    expect((await call(ana, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000004/cancel`)).status).toBe(200)
   })
 
   it('hands over ownership, removes a member, and lets someone leave', async () => {
