@@ -14,3 +14,4 @@ One file per subject, shaped by [_template.md](_template.md).
 | [invites.md](invites.md) | One active invite link per organization, stored only as a hash |
 | [slack.md](slack.md) | One Slack app for every workspace, linking each person once, `/kudos` under the same rules as the web app |
 | [sprints.md](sprints.md) | Seasons by hand or every sprint of 1–4 weeks, closed by an hourly job |
+| [bounties.md](bounties.md) | Coins offered for a task from the allowance, paid to whoever did it |
