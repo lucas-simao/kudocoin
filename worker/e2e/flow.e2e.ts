@@ -64,6 +64,15 @@ async function write(path: string, fields: Record<string, unknown>): Promise<voi
   if (!response.ok) throw new Error(`write ${path}: ${response.status}`)
 }
 
+/** An organization's bounty by its number, straight from the emulator. */
+async function bountyIdOf(orgId: string, number: number): Promise<string> {
+  const response = await fetch(`${FIRESTORE}/orgs/${orgId}/bounties?pageSize=100`, { headers: { authorization: 'Bearer owner' } })
+  const { documents = [] } = (await response.json()) as { documents?: { name: string; fields: Record<string, any> }[] }
+  const found = documents.find((item) => int(item.fields.number) === number)
+  if (!found) throw new Error(`no bounty #${number}`)
+  return found.name.split('/').pop()!
+}
+
 /** Runs the hourly job now (wrangler dev --test-scheduled). */
 async function hourly(): Promise<void> {
   const response = await fetch(`${API}/__scheduled?cron=7+*+*+*+*`)
@@ -274,6 +283,51 @@ describe('the whole flow', () => {
     expect((await kudos(API, slack, BRUNO_SLACK, 'bounties')).reply!.text).toContain('Nenhuma recompensa aberta')
   })
 
+  it('takes "I did it" on a bounty, and pays a lone claim after a week of silence', async () => {
+    const offered = (await kudos(API, slack, ANA_SLACK, 'bounty 1 write the README')).reply!
+    const number = Number(/#(\d+)/.exec(offered.text)![1])
+    const id = await bountyIdOf(orgId, number)
+    expect((await kudos(API, slack, ANA_SLACK, `bounty done #${number}`)).reply!.text).toBe('Você não pode dar moedas para si mesmo.')
+    expect((await kudos(API, slack, BRUNO_SLACK, `bounty done #${number}`)).reply!.text).toContain(`Você disse que fez a recompensa #${number}`)
+    expect((await read(`orgs/${orgId}/bounties/${id}`))!.autoPayAt.timestampValue).toBeTruthy()
+    expect((await kudos(API, slack, ANA_SLACK, `bounty reject #${number} <@U0BRUNO|bruno>`)).reply!.text).toContain('foi retirada')
+    expect('nullValue' in (await read(`orgs/${orgId}/bounties/${id}`))!.autoPayAt).toBe(true)
+    await kudos(API, slack, BRUNO_SLACK, `bounty done #${number}`)
+
+    // A week later, nobody answered: the hourly job pays the one claimant.
+    await write(`orgs/${orgId}/bounties/${id}`, { autoPayAt: { timestampValue: new Date(Date.now() - 60_000).toISOString() } })
+    await hourly()
+    const paid = (await read(`orgs/${orgId}/bounties/${id}`))!
+    expect(paid.status.stringValue).toBe('paid')
+    expect(paid.paidTo.stringValue).toBe(bruno.uid)
+    expect(paid.paidBy.stringValue).toBe('auto')
+    expect((await read(`orgs/${orgId}/ledger/bounty-${id}`))!.to.stringValue).toBe(bruno.uid)
+  })
+
+  it('asks for coins from /kudos, and pays or declines once', async () => {
+    const asked = (await kudos(API, slack, BRUNO_SLACK, 'request <@U0ANA|ana> 1 linked my Slack')).reply!
+    expect(asked.response_type).toBe('ephemeral')
+    const number = Number(/#(\d+)/.exec(asked.text)![1])
+    expect((await kudos(API, slack, BRUNO_SLACK, 'request <@U0ANA|ana> 1 again')).reply!.text).toBe(
+      `Você já tem um pedido aberto para essa pessoa (#${number}).`,
+    )
+    const list = (await kudos(API, slack, ANA_SLACK, 'requests')).reply!.text
+    expect(list).toContain('*Pedidos para você*')
+    expect(list).toContain(`#${number} · Bruno pede 1 Kudocoin · linked my Slack`)
+    expect((await kudos(API, slack, BRUNO_SLACK, `request pay #${number}`)).reply!.text).toBe('Esse pedido não é seu para responder.')
+
+    const anaGiven = int((await read(`orgs/${orgId}/members/${ana.uid}`))!.given.mapValue.fields.amount)
+    expect((await kudos(API, slack, ANA_SLACK, `request pay #${number}`)).reply!.text).toContain(`<@U0ANA> pagou o pedido #${number}`)
+    expect(int((await read(`orgs/${orgId}/members/${ana.uid}`))!.given.mapValue.fields.amount)).toBe(anaGiven + 1)
+    expect((await kudos(API, slack, ANA_SLACK, `request decline #${number}`)).reply!.text).toBe('Esse pedido já foi respondido.')
+
+    // Answered, the slot is free again.
+    const again = Number(/#(\d+)/.exec((await kudos(API, slack, BRUNO_SLACK, 'request <@U0ANA|ana> 1 one more')).reply!.text)![1])
+    expect((await kudos(API, slack, ANA_SLACK, `request decline #${again}`)).reply!.text).toBe(`Pedido #${again} recusado.`)
+    expect((await kudos(API, slack, BRUNO_SLACK, `request cancel #${again}`)).reply!.text).toBe('Esse pedido já foi respondido.')
+    expect((await kudos(API, slack, BRUNO_SLACK, 'requests')).reply!.text).toBe('Nenhum pedido aberto.')
+  })
+
   it('lets a person unlink, and an admin disconnect the workspace', async () => {
     const mine = await call(ana, 'GET', '/api/me/slack')
     expect(mine.body.links).toEqual([{ id: `${TEAM.id}_U0ANA`, teamName: TEAM.name, slackName: 'ana' }])
@@ -389,6 +443,38 @@ describe('the whole flow', () => {
     await write(`orgs/${orgId}/bounties/bounty-key-000000004`, { expiresOn: { stringValue: '2020-01-01' } })
     expect((await pay(carla, 'bounty-key-000000004', bruno.uid)).body.error).toBe('bounty_expired')
     expect((await call(ana, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000004/cancel`)).status).toBe(200)
+  })
+
+  it('claims and requests on the web API', async () => {
+    const offer = await call(carla, 'POST', `/api/orgs/${orgId}/bounties`, { amount: 1, task: 'Book the room', key: 'bounty-key-000000005' })
+    expect(offer.status).toBe(200)
+    const claim = (who: Person) => call(who, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000005/claim`)
+    expect((await claim(carla)).body.error).toBe('self_give')
+    expect((await claim(bruno)).status).toBe(200)
+    expect((await claim(ana)).status).toBe(200)
+    // Two claims: nothing is paid by itself.
+    expect('nullValue' in (await read(`orgs/${orgId}/bounties/bounty-key-000000005`))!.autoPayAt).toBe(true)
+    expect((await call(bruno, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000005/reject`, { uid: ana.uid })).body.error).toBe('forbidden')
+    expect((await call(carla, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000005/reject`, { uid: ana.uid })).status).toBe(200)
+    expect((await read(`orgs/${orgId}/bounties/bounty-key-000000005`))!.autoPayAt.timestampValue).toBeTruthy()
+    expect((await call(carla, 'POST', `/api/orgs/${orgId}/bounties/bounty-key-000000005/pay`, { to: bruno.uid })).status).toBe(200)
+
+    const ask = (who: Person, to: string, key: string, amount = 1) =>
+      call(who, 'POST', `/api/orgs/${orgId}/requests`, { to, amount, reason: 'Helped with the release', key })
+    expect((await ask(bruno, carla.uid, 'request-key-0000001', 9)).body.error).toBe('amount_invalid')
+    expect((await ask(bruno, bruno.uid, 'request-key-0000001')).body.error).toBe('self_give')
+    const asked = await ask(bruno, carla.uid, 'request-key-0000001')
+    expect(asked.status).toBe(200)
+    expect((await ask(bruno, carla.uid, 'request-key-0000002')).body.error).toBe('request_open')
+    expect((await call(ana, 'POST', `/api/orgs/${orgId}/requests/request-key-0000001/pay`)).body.error).toBe('not_yours')
+    const paid = await call(carla, 'POST', `/api/orgs/${orgId}/requests/request-key-0000001/pay`)
+    expect(paid.status).toBe(200)
+    const entry = (await read(`orgs/${orgId}/ledger/${paid.body.entryId}`))!
+    expect(entry.from.stringValue).toBe(carla.uid)
+    expect(entry.reason.stringValue).toBe('Helped with the release')
+    const request = (await read(`orgs/${orgId}/requests/request-key-0000001`))!
+    expect(request.status.stringValue).toBe('paid')
+    expect((await read(`orgs/${orgId}/members/${bruno.uid}`))!.openRequestsTo.mapValue.fields?.[carla.uid]).toBeUndefined()
   })
 
   it('hands over ownership, removes a member, and lets someone leave', async () => {

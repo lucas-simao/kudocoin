@@ -103,6 +103,26 @@ describe('what /kudos is asked', () => {
     expect(parseRequest('recompensa pagar 7 <@U123>')).toEqual({ kind: 'bountyPay', number: 7, slackUserId: 'U123' })
     expect(parseRequest('bounty cancel #7')).toEqual({ kind: 'bountyCancel', number: 7 })
     expect(parseRequest('bounty fix it')).toEqual({ kind: 'unknown' })
+    expect(parseRequest('bounty done #7')).toEqual({ kind: 'bountyDone', number: 7 })
+    expect(parseRequest('recompensa feito 7')).toEqual({ kind: 'bountyDone', number: 7 })
+    expect(parseRequest('bounty reject #7 <@U123|bruno>')).toEqual({ kind: 'bountyReject', number: 7, slackUserId: 'U123' })
+  })
+
+  it('reads the request commands', () => {
+    expect(parseRequest('requests')).toEqual({ kind: 'requests' })
+    expect(parseRequest('pedidos')).toEqual({ kind: 'requests' })
+    expect(parseRequest('request <@U123|bruno> 2 reviewed your PR')).toEqual({
+      kind: 'requestAsk',
+      kudos: { slackUserId: 'U123', amount: 2, reason: 'reviewed your PR' },
+    })
+    expect(parseRequest('pedir <@U123> ajudei no deploy')).toEqual({
+      kind: 'requestAsk',
+      kudos: { slackUserId: 'U123', amount: 1, reason: 'ajudei no deploy' },
+    })
+    expect(parseRequest('request pay #3')).toEqual({ kind: 'requestAnswer', number: 3, answer: 'pay' })
+    expect(parseRequest('pedido recusar 3')).toEqual({ kind: 'requestAnswer', number: 3, answer: 'decline' })
+    expect(parseRequest('request cancel #3')).toEqual({ kind: 'requestAnswer', number: 3, answer: 'cancel' })
+    expect(parseRequest('request bruno')).toEqual({ kind: 'unknown' })
   })
 
   it('does not guess', () => {

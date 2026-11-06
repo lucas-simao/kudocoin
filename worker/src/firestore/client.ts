@@ -122,6 +122,21 @@ export class Firestore {
       .map((row) => ({ id: row.document!.name.split('/').pop()!, doc: decodeFields(row.document!.fields ?? {}) }))
   }
 
+  /** Documents of every collection with this name, wherever they are, whose field is at most the value. */
+  async dueIn(collection: string, field: string, value: Plain, limit = 50): Promise<{ path: string; doc: Doc }[]> {
+    const rows = await this.call<{ document?: { name: string; fields?: Record<string, FsValue> } }[]>('POST', `${this.base}:runQuery`, {
+      structuredQuery: {
+        from: [{ collectionId: collection, allDescendants: true }],
+        where: { fieldFilter: { field: { fieldPath: field }, op: 'LESS_THAN_OR_EQUAL', value: encodeFields({ v: value }).v } },
+        limit,
+      },
+    })
+    // A document's name is `<root>/<path>`; the path is what the other methods take.
+    return rows
+      .filter((row) => row.document)
+      .map((row) => ({ path: row.document!.name.slice(this.root.length + 1), doc: decodeFields(row.document!.fields ?? {}) }))
+  }
+
   /** Every document of a collection, a page of up to 300 at a time. */
   async list(collectionPath: string): Promise<{ id: string; doc: Doc }[]> {
     const all: { id: string; doc: Doc }[] = []

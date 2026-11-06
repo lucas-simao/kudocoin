@@ -48,6 +48,11 @@ service cloud.firestore {
         allow read: if isMember(orgId);
       }
 
+      // Requests (docs/decisions/claims-and-requests.md): read like the ledger.
+      match /requests/{requestId} {
+        allow read: if isMember(orgId);
+      }
+
       // The active invite link, for admins to copy again (docs/decisions/invites.md).
       match /admin/{docId} {
         allow read: if isAdmin(orgId);

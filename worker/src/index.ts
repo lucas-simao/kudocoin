@@ -11,7 +11,8 @@ import { join, newInvite, previewInvite, turnOffInvite } from './services/invite
 import { removeMember, setRole } from './services/members'
 import { createOrg, resolveSlug, updateOrg } from './services/orgs'
 import { closeSeason } from './services/seasons'
-import { cancelBounty, offerBounty, payBounty } from './services/bounties'
+import { cancelBounty, claimBounty, offerBounty, payBounty, payDueBounties, rejectClaim } from './services/bounties'
+import { askCoins, cancelRequest, declineRequest, payRequest } from './services/requests'
 import { closeDueSeasons } from './scheduled'
 import { slashCommand } from './slack/command'
 import { disconnect, installUrl, link, linkPreview, myLinks, oauthCallback, setAnnounce, slackOn, unlink } from './slack/service'
@@ -104,6 +105,22 @@ const routes: [method: string, pattern: string, handler: Handler][] = [
   ['POST', '/api/orgs/:orgId/bounties/:bountyId/pay', ({ store, caller, params, body }) =>
     payBounty(store, params.orgId, caller, params.bountyId, body.to)],
   ['POST', '/api/orgs/:orgId/bounties/:bountyId/cancel', ({ store, caller, params }) => cancelBounty(store, params.orgId, caller, params.bountyId)],
+  // Claims and requests: docs/decisions/claims-and-requests.md.
+  ['POST', '/api/orgs/:orgId/bounties/:bountyId/claim', ({ store, caller, params }) => claimBounty(store, params.orgId, caller, params.bountyId)],
+  ['POST', '/api/orgs/:orgId/bounties/:bountyId/reject', async ({ store, caller, params, body }) => {
+    await rejectClaim(store, params.orgId, caller, params.bountyId, body.uid)
+    return { ok: true }
+  }],
+  ['POST', '/api/orgs/:orgId/requests', ({ store, caller, params, body }) => askCoins(store, params.orgId, caller, body as never)],
+  ['POST', '/api/orgs/:orgId/requests/:requestId/pay', ({ store, caller, params }) => payRequest(store, params.orgId, caller, params.requestId)],
+  ['POST', '/api/orgs/:orgId/requests/:requestId/decline', async ({ store, caller, params }) => {
+    await declineRequest(store, params.orgId, caller, params.requestId)
+    return { ok: true }
+  }],
+  ['POST', '/api/orgs/:orgId/requests/:requestId/cancel', async ({ store, caller, params }) => {
+    await cancelRequest(store, params.orgId, caller, params.requestId)
+    return { ok: true }
+  }],
 
   ['POST', '/api/orgs/:orgId/seasons/close', async ({ store, caller, params, body }) => {
     await requireRole(store, params.orgId, caller, 'admin')
@@ -190,7 +207,9 @@ export default {
 
   /** The hourly Cron Trigger (wrangler.toml): seasons that close by themselves. */
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    const { closed, failed } = await closeDueSeasons(new Firestore(env))
-    if (closed || failed) console.log('seasons closed', closed, 'failed', failed)
+    const store = new Firestore(env)
+    const seasons = await closeDueSeasons(store)
+    const bounties = await payDueBounties(store)
+    if (seasons.closed || seasons.failed || bounties.paid || bounties.failed) console.log('hourly', { seasons, bounties })
   },
 }

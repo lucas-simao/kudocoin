@@ -23,6 +23,12 @@ export type ErrorCode =
   | 'too_many_bounties'
   | 'bounty_closed'
   | 'bounty_expired'
+  | 'too_many_claims'
+  | 'requests_limit'
+  | 'request_open'
+  | 'request_closed'
+  | 'request_expired'
+  | 'not_yours'
   | 'slack_unavailable'
   | 'slack_link_invalid'
   | 'slack_not_connected'
@@ -53,6 +59,12 @@ const STATUS: Record<ErrorCode, number> = {
   too_many_bounties: 422,
   bounty_closed: 409,
   bounty_expired: 409,
+  too_many_claims: 422,
+  requests_limit: 422,
+  request_open: 409,
+  request_closed: 409,
+  request_expired: 409,
+  not_yours: 403,
   slack_unavailable: 503,
   slack_link_invalid: 404,
   slack_not_connected: 404,

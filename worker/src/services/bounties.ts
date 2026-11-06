@@ -16,6 +16,7 @@ import {
 } from '../repositories/documents'
 import { addDays } from './cadence'
 import { isEntryKey } from './ids'
+import { fieldSegment } from '../firestore/values'
 import { boardField } from './orgs'
 import { countOn, dateIn, MAX_REASON } from './rules'
 
@@ -94,10 +95,14 @@ function mayHandle(bounty: BountyDoc, caller: Caller, callerMember: MemberDoc): 
   return bounty.by === caller.uid || callerMember.role !== 'member'
 }
 
+/**
+ * Pays a bounty. `caller` null is the hourly job paying a claim nobody answered (docs/decisions/claims-and-requests.md):
+ * it pays only when `autoPayAt` has passed and `to` is the one claimant.
+ */
 export async function payBounty(
   store: Firestore,
   orgId: string,
-  caller: Caller,
+  caller: Caller | null,
   bountyId: string,
   to: unknown,
 ): Promise<{ entryId: string; balance: number }> {
@@ -106,19 +111,28 @@ export async function payBounty(
     const [orgDoc, bountyDoc, callerDoc, receiverDoc] = await tx.getAll([
       paths.org(orgId),
       paths.bounty(orgId, bountyId),
-      paths.member(orgId, caller.uid),
+      paths.member(orgId, caller?.uid ?? to),
       paths.member(orgId, to),
     ])
     const org = as<OrgDoc>(orgDoc)
     const bounty = as<BountyDoc>(bountyDoc)
     const callerMember = as<MemberDoc>(callerDoc)
     const receiver = as<MemberDoc>(receiverDoc)
-    if (!org || !bounty || !callerMember) throw new ApiError('not_found')
-    if (!mayHandle(bounty, caller, callerMember)) throw new ApiError('forbidden')
+    if (!org || !bounty) throw new ApiError('not_found')
+    if (caller) {
+      if (!callerMember) throw new ApiError('not_found')
+      if (!mayHandle(bounty, caller, callerMember)) throw new ApiError('forbidden')
+    } else {
+      const claimants = Object.keys(bounty.claims ?? {})
+      const due = bounty.autoPayAt && bounty.autoPayAt.getTime() <= Date.now()
+      if (!due || claimants.length !== 1 || claimants[0] !== to) throw new ApiError('conflict')
+    }
     if (bounty.status !== 'open') throw new ApiError('bounty_closed', { status: bounty.status })
     const today = dateIn(org.settings.timezone, new Date())
-    if (today > bounty.expiresOn) throw new ApiError('bounty_expired', { expiresOn: bounty.expiresOn })
-    if (to === bounty.by) throw new ApiError('self_give')
+    // A claim keeps a bounty payable past its last day.
+    if (today > bounty.expiresOn && !hasClaims(bounty)) throw new ApiError('bounty_expired', { expiresOn: bounty.expiresOn })
+    // Nobody pays a bounty to themselves: not the offerer, and not an admin who claimed it.
+    if (to === bounty.by || to === caller?.uid) throw new ApiError('self_give')
     if (!receiver) throw new ApiError('not_a_member')
     const [seasonDoc, offererDoc] = await tx.getAll([paths.season(orgId, org.seasonId), paths.member(orgId, bounty.by)])
     const season = as<SeasonDoc>(seasonDoc)
@@ -157,8 +171,8 @@ export async function payBounty(
       },
       {
         path: paths.bounty(orgId, bountyId),
-        fields: { status: 'paid', paidTo: to, paidToName: receiver.name, paidAt: now, entryId },
-        mask: ['status', 'paidTo', 'paidToName', 'paidAt', 'entryId'],
+        fields: { status: 'paid', paidTo: to, paidToName: receiver.name, paidAt: now, entryId, paidBy: caller?.uid ?? 'auto', autoPayAt: null },
+        mask: ['status', 'paidTo', 'paidToName', 'paidAt', 'entryId', 'paidBy', 'autoPayAt'],
         exists: true,
       },
     ]
@@ -196,8 +210,8 @@ export async function cancelBounty(
     const writes: Write[] = [
       {
         path: paths.bounty(orgId, bountyId),
-        fields: { status: 'cancelled', cancelledAt: new Date() },
-        mask: ['status', 'cancelledAt'],
+        fields: { status: 'cancelled', cancelledAt: new Date(), autoPayAt: null },
+        mask: ['status', 'cancelledAt', 'autoPayAt'],
         exists: true,
       },
     ]
@@ -213,6 +227,115 @@ export async function cancelBounty(
       })
     }
     return { writes, result: { refunded } }
+  })
+}
+
+export const MAX_CLAIMS = 10
+/** Days of silence after a single claim before the hourly job pays it. */
+export const AUTO_PAY_DAYS = 7
+
+function hasClaims(bounty: BountyDoc): boolean {
+  return Object.keys(bounty.claims ?? {}).length > 0
+}
+
+function claimField(uid: string): string {
+  return `claims.${fieldSegment(uid)}`
+}
+
+/** With exactly one claim, a week after it; otherwise nothing is paid by itself. */
+function autoPayFor(claims: Record<string, { at: Date }>): Date | null {
+  const all = Object.values(claims)
+  return all.length === 1 ? new Date(all[0].at.getTime() + AUTO_PAY_DAYS * 86_400_000) : null
+}
+
+/** "I did it": any member but the offerer claims an open bounty. Claiming again changes nothing. */
+export async function claimBounty(store: Firestore, orgId: string, caller: Caller, bountyId: string): Promise<{ autoPayAt: Date | null }> {
+  return store.transaction(async (tx) => {
+    const [orgDoc, bountyDoc, memberDoc] = await tx.getAll([paths.org(orgId), paths.bounty(orgId, bountyId), paths.member(orgId, caller.uid)])
+    const org = as<OrgDoc>(orgDoc)
+    const bounty = as<BountyDoc>(bountyDoc)
+    const member = as<MemberDoc>(memberDoc)
+    if (!org || !bounty || !member) throw new ApiError('not_found')
+    if (bounty.status !== 'open') throw new ApiError('bounty_closed', { status: bounty.status })
+    if (bounty.by === caller.uid) throw new ApiError('self_give')
+    const claims = { ...(bounty.claims ?? {}) }
+    if (claims[caller.uid]) return { writes: [], result: { autoPayAt: bounty.autoPayAt ?? null } }
+    const today = dateIn(org.settings.timezone, new Date())
+    if (today > bounty.expiresOn && !hasClaims(bounty)) throw new ApiError('bounty_expired', { expiresOn: bounty.expiresOn })
+    if (Object.keys(claims).length >= MAX_CLAIMS) throw new ApiError('too_many_claims', { max: MAX_CLAIMS })
+    claims[caller.uid] = { name: member.name, at: new Date() }
+    const autoPayAt = autoPayFor(claims)
+    return {
+      writes: [
+        {
+          path: paths.bounty(orgId, bountyId),
+          fields: { claims: { [caller.uid]: claims[caller.uid] }, autoPayAt },
+          mask: [claimField(caller.uid), 'autoPayAt'],
+          exists: true,
+        },
+      ],
+      result: { autoPayAt },
+    }
+  })
+}
+
+/** "That's not it": the offerer or an admin removes a claim. */
+export async function rejectClaim(store: Firestore, orgId: string, caller: Caller, bountyId: string, uid: unknown): Promise<void> {
+  if (typeof uid !== 'string' || !uid) throw new ApiError('invalid_request', { field: 'uid' })
+  await store.transaction(async (tx) => {
+    const [bountyDoc, callerDoc] = await tx.getAll([paths.bounty(orgId, bountyId), paths.member(orgId, caller.uid)])
+    const bounty = as<BountyDoc>(bountyDoc)
+    const callerMember = as<MemberDoc>(callerDoc)
+    if (!bounty || !callerMember) throw new ApiError('not_found')
+    if (!mayHandle(bounty, caller, callerMember)) throw new ApiError('forbidden')
+    if (bounty.status !== 'open') throw new ApiError('bounty_closed', { status: bounty.status })
+    const claims = { ...(bounty.claims ?? {}) }
+    if (!claims[uid]) throw new ApiError('not_found')
+    delete claims[uid]
+    return {
+      // A field in the mask but not in the fields is removed.
+      writes: [{ path: paths.bounty(orgId, bountyId), fields: { autoPayAt: autoPayFor(claims) }, mask: [claimField(uid), 'autoPayAt'], exists: true }],
+      result: undefined,
+    }
+  })
+}
+
+/** The hourly job: bounties with one claim and a week of silence are paid to the claimant. */
+export async function payDueBounties(store: Firestore, now = new Date()): Promise<{ paid: number; failed: number }> {
+  const due = await store.dueIn('bounties', 'autoPayAt', now, 50)
+  let paid = 0
+  let failed = 0
+  for (const { path, doc } of due) {
+    const [, orgId, , bountyId] = path.split('/')
+    const bounty = doc as unknown as BountyDoc
+    const [claimant] = Object.keys(bounty.claims ?? {})
+    try {
+      await payBounty(store, orgId, null, bountyId, claimant)
+      paid += 1
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'not_a_member') {
+        // The claimant left: their claim goes, and the bounty waits again.
+        await rejectClaimAsJob(store, orgId, bountyId, claimant)
+      } else {
+        failed += 1
+        console.error('paying a bounty', path, error instanceof Error ? error.message : 'unknown')
+      }
+    }
+  }
+  return { paid, failed }
+}
+
+async function rejectClaimAsJob(store: Firestore, orgId: string, bountyId: string, uid: string): Promise<void> {
+  await store.transaction(async (tx) => {
+    const [bountyDoc] = await tx.getAll([paths.bounty(orgId, bountyId)])
+    const bounty = as<BountyDoc>(bountyDoc)
+    if (!bounty || !bounty.claims?.[uid]) return { writes: [], result: undefined }
+    const claims = { ...bounty.claims }
+    delete claims[uid]
+    return {
+      writes: [{ path: paths.bounty(orgId, bountyId), fields: { autoPayAt: autoPayFor(claims) }, mask: [claimField(uid), 'autoPayAt'], exists: true }],
+      result: undefined,
+    }
   })
 }
 
