@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fromSlack, readToken, seal, signToken, unseal } from '../src/slack/crypto'
 import { fill, SLACK_MESSAGES } from '../src/slack/messages'
-import { escape, parseKudos, plainText } from '../src/slack/parse'
+import { escape, parseKudos, parseRequest, plainText } from '../src/slack/parse'
 
 const KEY = 'test-key'
 
@@ -80,6 +80,23 @@ describe('/kudos text', () => {
       'pairing with @bia in #dev & the docs @channel',
     )
     expect(escape('<!channel> & <@U1>')).toBe('&lt;!channel&gt; &amp; &lt;@U1&gt;')
+  })
+})
+
+describe('what /kudos is asked', () => {
+  it('reads help, the summary and a give, in any of the three languages', () => {
+    expect(parseRequest('')).toEqual({ kind: 'help' })
+    expect(parseRequest('  Help ')).toEqual({ kind: 'help' })
+    expect(parseRequest('ajuda')).toEqual({ kind: 'help' })
+    expect(parseRequest('summary')).toEqual({ kind: 'summary', share: false })
+    expect(parseRequest('resumo compartilhar')).toEqual({ kind: 'summary', share: true })
+    expect(parseRequest('SUMMARY share')).toEqual({ kind: 'summary', share: true })
+    expect(parseRequest('<@U1|ana> 2 thanks')).toEqual({ kind: 'give', kudos: { slackUserId: 'U1', amount: 2, reason: 'thanks' } })
+  })
+
+  it('does not guess', () => {
+    expect(parseRequest('summary please now')).toEqual({ kind: 'unknown' })
+    expect(parseRequest('thanks @ana')).toEqual({ kind: 'unknown' })
   })
 })
 

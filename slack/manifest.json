@@ -13,7 +13,7 @@
         "command": "/kudos",
         "url": "https://kudocoin-api.lucas-simao01.workers.dev/slack/commands",
         "description": "Give coins to someone who helped you",
-        "usage_hint": "@person [amount] reason",
+        "usage_hint": "@person [amount] reason · summary · help",
         "should_escape": true
       }
     ]

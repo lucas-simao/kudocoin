@@ -27,6 +27,8 @@ Slack waits three seconds for an answer. The Worker answers at once with nothing
 
 An unlinked receiver gets nothing yet; the giver is told that this person still has to connect, and nothing is spent.
 
+**`/kudos help`** (or nothing) lists the commands, also before a person has linked. **`/kudos summary`** shows the open season's leaderboard (top ten, its end and prize) with the person's own place and what they can still give today, only to them; **`/kudos summary share`** posts the leaderboard alone in the channel. Both need a linked member, since the leaderboard is for members (`docs/decisions/organizations.md`). The words are English and also understood in Portuguese and Spanish (`ajuda`, `resumo compartilhar`, `resumen compartir`).
+
 **Answers.** A refusal answers only the giver, in words ("You can only give 2 more today"). A give is announced in the channel where it was typed: "@ana gave 3 kudos to @bruno: reviewed my PR". An organization can turn the announcement off, and then only the giver sees the confirmation. The reason is kept as plain words, and posted with Slack's markup escaped, so a reason cannot ping `@channel`. Texts follow the giver's language in Kudocoin (Portuguese, English or Spanish), or the connecting admin's before the giver has one; the Worker keeps the few Slack sentences in `worker/src/slack/messages.ts`, typed so every language has every sentence.
 
 **Scopes**: only `commands`. Answers go through `response_url`, and Slack shows names for mentions on its own, so neither `chat:write` nor `users:read` is needed. Nothing reads messages, channels or people.
@@ -45,7 +47,7 @@ An unlinked receiver gets nothing yet; the giver is told that this person still 
 ## Code
 
 - `slack/manifest.json`
-- `worker/src/slack/` (`crypto.ts`, `service.ts`, `command.ts`, `parse.ts`, `messages.ts`)
+- `worker/src/slack/` (`crypto.ts`, `service.ts`, `command.ts`, `summary.ts`, `parse.ts`, `messages.ts`)
 - `worker/e2e/fake-slack.ts`
 - `worker/src/services/give.ts` (the same `move()`)
 - `web/src/features/settings/` (Add to Slack, Disconnect, announcements)
