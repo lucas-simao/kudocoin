@@ -363,9 +363,15 @@ describe('the whole flow', () => {
     const pay = (who: Person, id: string, to: string) => call(who, 'POST', `/api/orgs/${orgId}/bounties/${id}/pay`, { to })
     expect((await pay(bruno, 'bounty-key-000000002', bruno.uid)).body.error).toBe('forbidden')
     expect((await pay(carla, 'bounty-key-000000002', carla.uid)).body.error).toBe('self_give')
-    const before = int((await read(`orgs/${orgId}/members/${bruno.uid}`))?.balance)
-    expect((await pay(carla, 'bounty-key-000000002', bruno.uid)).status).toBe(200)
-    expect(int((await read(`orgs/${orgId}/members/${bruno.uid}`))?.balance)).toBe(before + 2)
+    // The coins land in the open sprint's leaderboard; a balance from an earlier sprint counts as zero.
+    const board = async () => {
+      const seasonId = (await read(`orgs/${orgId}`))!.seasonId.stringValue
+      return int((await read(`orgs/${orgId}/seasons/${seasonId}`))!.board.mapValue.fields[bruno.uid]?.mapValue.fields.balance ?? { integerValue: '0' })
+    }
+    const before = await board()
+    const paid = await pay(carla, 'bounty-key-000000002', bruno.uid)
+    expect(paid.body.balance).toBe(before + 2)
+    expect(await board()).toBe(before + 2)
     const entry = (await read(`orgs/${orgId}/ledger/bounty-bounty-key-000000002`))!
     expect(entry.kind.stringValue).toBe('bounty')
     expect(entry.reason.stringValue).toBe('Write the onboarding guide')
