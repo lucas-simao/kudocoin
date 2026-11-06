@@ -77,16 +77,18 @@ export async function answer(env: Env, store: Firestore, command: Command): Prom
   const request = parseRequest(command.text)
   const web = webOrigin(env)
 
-  // Someone Slack has not seen: a link only they can see, to connect their account once. Help needs no link.
+  // Someone Slack has not seen: a link only they can see, to connect their account once. Asked for help, they
+  // get the commands above it.
   if (!giverLink) {
     const words = SLACK_MESSAGES[slackLang(team.lang)]
-    if (request.kind === 'help') return ephemeral(fill(words.help, { url: web }))
+    const help = request.kind === 'help' ? fill(words.help, { url: web }) : null
     const token = await signToken(env.SLACK_KEY!, 'link', { t: command.teamId, u: command.userId, n: command.userName }, 900)
     const url = `${web}/slack/link?t=${token}`
     return {
       response_type: 'ephemeral',
-      text: `${words.connect} ${url}`,
+      text: `${help ? `${help}\n\n` : ''}${words.connect} ${url}`,
       blocks: [
+        ...(help ? [{ type: 'section', text: { type: 'mrkdwn', text: help } }] : []),
         {
           type: 'section',
           text: { type: 'mrkdwn', text: words.connect },

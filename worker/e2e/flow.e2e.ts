@@ -193,8 +193,11 @@ describe('the whole flow', () => {
     const notYet = await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 thanks')
     expect(notYet.reply!.text).toContain('<@U0ANA>')
     expect(int((await read(`orgs/${orgId}/members/${bruno.uid}`))?.given?.mapValue?.fields?.amount ?? { integerValue: '0' })).toBe(0)
+    // Before linking, help comes with the link to connect.
     const hers = await kudos(API, slack, ANA_SLACK, '')
-    expect((await call(ana, 'POST', '/api/slack/link', { token: linkToken(hers.reply) })).status).toBe(200)
+    expect(hers.reply!.text).toContain('/kudos summary')
+    const herToken = new URL(hers.reply!.blocks.at(-1).accessory.url).searchParams.get('t')!
+    expect((await call(ana, 'POST', '/api/slack/link', { token: herToken })).status).toBe(200)
   })
 
   it('gives from /kudos under the same rules, once per command', async () => {

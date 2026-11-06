@@ -91,7 +91,7 @@ describe('what /kudos is asked', () => {
     expect(parseRequest('summary')).toEqual({ kind: 'summary', share: false })
     expect(parseRequest('resumo compartilhar')).toEqual({ kind: 'summary', share: true })
     expect(parseRequest('SUMMARY share')).toEqual({ kind: 'summary', share: true })
-    expect(parseRequest('<@U1|ana> 2 thanks')).toEqual({ kind: 'give', kudos: { slackUserId: 'U1', amount: 2, reason: 'thanks' } })
+    expect(parseRequest('<@U123|ana> 2 thanks')).toEqual({ kind: 'give', kudos: { slackUserId: 'U123', amount: 2, reason: 'thanks' } })
   })
 
   it('does not guess', () => {
