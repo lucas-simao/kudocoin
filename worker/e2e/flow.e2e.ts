@@ -193,13 +193,20 @@ describe('the whole flow', () => {
     const notYet = await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 1 thanks')
     expect(notYet.reply!.text).toContain('<@U0ANA>')
     expect(int((await read(`orgs/${orgId}/members/${bruno.uid}`))?.given?.mapValue?.fields?.amount ?? { integerValue: '0' })).toBe(0)
+    // Before linking, help comes with the link to connect.
     const hers = await kudos(API, slack, ANA_SLACK, '')
-    expect((await call(ana, 'POST', '/api/slack/link', { token: linkToken(hers.reply) })).status).toBe(200)
+    expect(hers.reply!.text).toContain('/kudos summary')
+    const herToken = new URL(hers.reply!.blocks.at(-1).accessory.url).searchParams.get('t')!
+    expect((await call(ana, 'POST', '/api/slack/link', { token: herToken })).status).toBe(200)
   })
 
   it('gives from /kudos under the same rules, once per command', async () => {
     // Messages follow the giver's language, or the connecting admin's when the giver has none (Ana: pt-BR).
-    expect((await kudos(API, slack, BRUNO_SLACK, 'help')).reply!.text).toContain('/kudos @pessoa')
+    const help = (await kudos(API, slack, BRUNO_SLACK, 'help')).reply!
+    expect(help.response_type).toBe('ephemeral')
+    expect(help.text).toContain('/kudos summary')
+    expect(help.text).toContain(`<http://localhost:18610/o/${slug}|`)
+    expect((await kudos(API, slack, BRUNO_SLACK, 'please')).reply!.text).toContain('Não entendi')
     expect((await kudos(API, slack, BRUNO_SLACK, '<@U0ANA|ana> 9 too many')).reply!.text).toBe('Escolha de 1 a 5.')
     expect((await kudos(API, slack, BRUNO_SLACK, '<@U0BRUNO|bruno> 1 me')).reply!.text).toBe('Você não pode dar moedas para si mesmo.')
 
@@ -212,6 +219,16 @@ describe('the whole flow', () => {
     expect(int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)).toBe(before + 2)
     await kudos(API, slack, BRUNO_SLACK, text, { triggerId: 'same-trigger' })
     expect(int((await read(`orgs/${orgId}/members/${ana.uid}`))?.balance)).toBe(before + 2)
+
+    // The summary: the leaderboard, and for the one who asked, their place and what is left today.
+    const mine = (await kudos(API, slack, BRUNO_SLACK, 'summary')).reply!
+    expect(mine.response_type).toBe('ephemeral')
+    expect(mine.text).toContain('*Team A* · Temporada 1')
+    expect(mine.text).toMatch(/🥇 Bruno: \d+ Kudocoin/)
+    expect(mine.text).toContain('Hoje ainda pode dar 3.')
+    const shared = (await kudos(API, slack, BRUNO_SLACK, 'summary share')).reply!
+    expect(shared.response_type).toBe('in_channel')
+    expect(shared.text).not.toContain('Hoje ainda pode dar')
 
     // With the announcement off, only the giver sees it.
     expect((await call(bruno, 'PATCH', `/api/orgs/${orgId}/slack`, { announce: false })).status).toBe(403)

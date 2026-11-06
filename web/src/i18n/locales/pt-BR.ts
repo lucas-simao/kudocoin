@@ -54,7 +54,7 @@ export const ptBR = {
     keepSlack: 'Do Slack, se você ligar: o identificador e o nome do workspace, seu identificador e seu nome de usuário no Slack, e o token de acesso do workspace, que guardamos criptografado.',
     keepBrowser: 'No seu navegador: o idioma escolhido, se você já viu o tour e a sessão de login. Não usamos cookies de rastreamento nem ferramentas de análise.',
     whoTitle: 'Quem vê',
-    whoBody: 'Só os membros de cada organização veem seu nome, sua foto, seu saldo e as doações daquela organização. Quem está fora não vê nada dela. Se o Slack estiver ligado com anúncios, as doações feitas por /kudos aparecem no canal onde foram feitas.',
+    whoBody: 'Só os membros de cada organização veem seu nome, sua foto, seu saldo e as doações daquela organização. Quem está fora não vê nada dela. Se o Slack estiver ligado com anúncios, as doações feitas por /kudos aparecem no canal onde foram feitas. E quem usa /kudos summary share mostra o placar no canal.',
     notTitle: 'O que não fazemos',
     notBody: 'Não vendemos nem compartilhamos seus dados, não mostramos anúncios e não usamos seus dados para outra coisa além do jogo. O app do Slack não lê mensagens, canais nem a lista de pessoas: ele só recebe o comando /kudos.',
     whereTitle: 'Onde fica',

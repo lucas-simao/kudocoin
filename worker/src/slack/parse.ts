@@ -17,6 +17,28 @@ export function parseKudos(text: string): Kudos | null {
   return { slackUserId: found[1], amount: found[2] === undefined ? 1 : Number(found[2]), reason: found[3].trim() }
 }
 
+export type Request =
+  | { kind: 'help' }
+  | { kind: 'summary'; share: boolean }
+  | { kind: 'give'; kudos: Kudos }
+  | { kind: 'unknown' }
+
+// The words are English in the docs and the help, and also understood in Portuguese and Spanish.
+const HELP = ['help', 'ajuda', 'ayuda', '?']
+const SUMMARY = ['summary', 'resumo', 'resumen', 'placar', 'marcador', 'leaderboard']
+const SHARE = ['share', 'compartilhar', 'compartir']
+
+/** What `/kudos` was asked: nothing or help, the summary (only for you, or shared), or a give. */
+export function parseRequest(text: string): Request {
+  const words = text.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0 || (words.length === 1 && HELP.includes(words[0]))) return { kind: 'help' }
+  if (SUMMARY.includes(words[0]) && (words.length === 1 || (words.length === 2 && SHARE.includes(words[1])))) {
+    return { kind: 'summary', share: words.length === 2 }
+  }
+  const kudos = parseKudos(text)
+  return kudos ? { kind: 'give', kudos } : { kind: 'unknown' }
+}
+
 /** Slack's markup as plain words, for the ledger, where the web app shows it as text. */
 export function plainText(slack: string): string {
   return slack

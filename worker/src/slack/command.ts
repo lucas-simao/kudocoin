@@ -10,8 +10,9 @@ import { move } from '../services/give'
 import { randomId, sha256 } from '../services/ids'
 import { fromSlack, signToken } from './crypto'
 import { fill, isSlackError, SLACK_MESSAGES, slackLang } from './messages'
-import { escape, parseKudos, plainText } from './parse'
+import { escape, parseRequest, plainText } from './parse'
 import { slackOn, webOrigin } from './service'
+import { summary } from './summary'
 
 export interface Command {
   teamId: string
@@ -73,16 +74,21 @@ export async function answer(env: Env, store: Firestore, command: Command): Prom
   const team = as<SlackTeamDoc>(await store.get(paths.slackTeam(command.teamId)))
   if (!team) return ephemeral(SLACK_MESSAGES.en.notConnected)
   const giverLink = as<SlackUserDoc>(await store.get(paths.slackUser(`${command.teamId}_${command.userId}`)))
+  const request = parseRequest(command.text)
+  const web = webOrigin(env)
 
-  // Someone Slack has not seen: a link only they can see, to connect their account once.
+  // Someone Slack has not seen: a link only they can see, to connect their account once. Asked for help, they
+  // get the commands above it.
   if (!giverLink) {
     const words = SLACK_MESSAGES[slackLang(team.lang)]
+    const help = request.kind === 'help' ? fill(words.help, { url: web }) : null
     const token = await signToken(env.SLACK_KEY!, 'link', { t: command.teamId, u: command.userId, n: command.userName }, 900)
-    const url = `${webOrigin(env)}/slack/link?t=${token}`
+    const url = `${web}/slack/link?t=${token}`
     return {
       response_type: 'ephemeral',
-      text: `${words.connect} ${url}`,
+      text: `${help ? `${help}\n\n` : ''}${words.connect} ${url}`,
       blocks: [
+        ...(help ? [{ type: 'section', text: { type: 'mrkdwn', text: help } }] : []),
         {
           type: 'section',
           text: { type: 'mrkdwn', text: words.connect },
@@ -92,16 +98,20 @@ export async function answer(env: Env, store: Firestore, command: Command): Prom
     }
   }
 
-  const kudos = parseKudos(command.text)
+  const kudos = request.kind === 'give' ? request.kudos : null
   const [userDoc, orgDoc, receiverDoc] = await store.getAll([
     paths.user(giverLink.uid),
     paths.org(team.orgId),
     ...(kudos ? [paths.slackUser(`${command.teamId}_${kudos.slackUserId}`)] : []),
   ])
-  const words = SLACK_MESSAGES[slackLang(as<UserDoc>(userDoc)?.lang ?? team.lang)]
+  const lang = slackLang(as<UserDoc>(userDoc)?.lang ?? team.lang)
+  const words = SLACK_MESSAGES[lang]
   const org = as<OrgDoc>(orgDoc)
   if (!org || org.slack?.teamId !== command.teamId) return ephemeral(words.notConnected)
-  if (!kudos) return ephemeral(words.usage)
+  const orgUrl = `${web}/o/${org.slug}`
+  if (request.kind === 'help') return ephemeral(fill(words.help, { url: orgUrl }))
+  if (request.kind === 'summary') return summary(store, team.orgId, org, giverLink.uid, lang, request.share, orgUrl)
+  if (!kudos) return ephemeral(`${words.unknown}\n\n${fill(words.help, { url: orgUrl })}`)
   if (kudos.slackUserId === command.userId) return ephemeral(words.errors.self_give)
   const giver = `<@${command.userId}>`
   const receiver = `<@${kudos.slackUserId}>`

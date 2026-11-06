@@ -56,7 +56,7 @@ export const en: Messages = {
     keepSlack: 'From Slack, if you connect it: the workspace’s ID and name, your Slack user ID and username, and the workspace’s access token, which we keep encrypted.',
     keepBrowser: 'In your browser: the language you chose, whether you saw the tour, and your sign-in session. We use no tracking cookies and no analytics.',
     whoTitle: 'Who sees it',
-    whoBody: 'Only the members of each organization see your name, photo, balance and that organization’s gives. People outside see nothing of it. If Slack is connected with announcements on, gives made with /kudos show up in the channel where they were made.',
+    whoBody: 'Only the members of each organization see your name, photo, balance and that organization’s gives. People outside see nothing of it. If Slack is connected with announcements on, gives made with /kudos show up in the channel where they were made. And whoever uses /kudos summary share shows the leaderboard in the channel.',
     notTitle: 'What we do not do',
     notBody: 'We do not sell or share your data, show ads, or use your data for anything but the game. The Slack app does not read messages, channels or the people list: it only receives the /kudos command.',
     whereTitle: 'Where it lives',

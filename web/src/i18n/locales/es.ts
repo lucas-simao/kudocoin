@@ -56,7 +56,7 @@ export const es: Messages = {
     keepSlack: 'De Slack, si lo conectas: el identificador y el nombre del workspace, tu identificador y tu nombre de usuario en Slack, y el token de acceso del workspace, que guardamos cifrado.',
     keepBrowser: 'En tu navegador: el idioma elegido, si ya viste el recorrido y tu sesión. No usamos cookies de rastreo ni herramientas de análisis.',
     whoTitle: 'Quién lo ve',
-    whoBody: 'Solo los miembros de cada organización ven tu nombre, tu foto, tu saldo y las entregas de esa organización. Quien está fuera no ve nada de ella. Si Slack está conectado con anuncios, las entregas hechas con /kudos aparecen en el canal donde se hicieron.',
+    whoBody: 'Solo los miembros de cada organización ven tu nombre, tu foto, tu saldo y las entregas de esa organización. Quien está fuera no ve nada de ella. Si Slack está conectado con anuncios, las entregas hechas con /kudos aparecen en el canal donde se hicieron. Y quien usa /kudos summary share muestra el marcador en el canal.',
     notTitle: 'Qué no hacemos',
     notBody: 'No vendemos ni compartimos tus datos, no mostramos anuncios y no usamos tus datos para nada más que el juego. La app de Slack no lee mensajes, canales ni la lista de personas: solo recibe el comando /kudos.',
     whereTitle: 'Dónde están',
