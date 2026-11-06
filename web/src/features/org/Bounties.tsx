@@ -55,10 +55,27 @@ function BountyRow({ bounty, org, members, me }: { bounty: Bounty; org: Org; mem
   const { problem, setProblem, explain } = useProblem()
   const today = todayIn(org.settings.timezone)
   const days = Math.round((Date.parse(`${bounty.expiresOn}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
-  const expired = days < 0
-  const when = expired ? t('bounty.expired') : days === 0 ? t('bounty.lastDay') : t('bounty.daysLeft', { n: days })
+  const claims = Object.entries(bounty.claims ?? {}).sort(([, a], [, b]) => a.at.toDate().getTime() - b.at.toDate().getTime())
+  // A claim keeps the bounty payable past its last day.
+  const expired = days < 0 && claims.length === 0
+  const when = days < 0 ? t('bounty.expired') : days === 0 ? t('bounty.lastDay') : t('bounty.daysLeft', { n: days })
   const mine = bounty.by === me.uid || me.role !== 'member'
-  const others = members.filter((member) => member.uid !== bounty.by)
+  const claimed = claims.some(([uid]) => uid === me.uid)
+  const claimants = new Set(claims.map(([uid]) => uid))
+  // Who said they did it comes first in the list to pay.
+  const others = members
+    .filter((member) => member.uid !== bounty.by)
+    .sort((a, b) => Number(claimants.has(b.uid)) - Number(claimants.has(a.uid)))
+  const payTo = to || (claims.length === 1 ? claims[0][0] : '')
+  const autoDays = bounty.autoPayAt ? Math.max(0, Math.ceil((bounty.autoPayAt.toDate().getTime() - Date.now()) / 86_400_000)) : null
+  const act = async (work: () => Promise<unknown>) => {
+    setProblem(undefined)
+    try {
+      await work()
+    } catch (caught) {
+      explain(caught)
+    }
+  }
   return (
     <li className="flex flex-col gap-3 py-3">
       <div className="flex flex-col gap-0.5">
@@ -72,35 +89,53 @@ function BountyRow({ bounty, org, members, me }: { bounty: Bounty; org: Org; mem
           {' · '}
           {t('bounty.by', { name: bounty.byName || t('common.formerMember') })}
           {' · '}
-          <span className={expired ? 'text-alert-text' : ''}>{when}</span>
+          <span className={days < 0 ? 'text-alert-text' : ''}>{when}</span>
         </p>
       </div>
+      {claims.length > 0 ? (
+        <ul className="flex flex-col gap-1.5 text-sm">
+          {claims.map(([uid, claim]) => (
+            <li key={uid} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>🙋 {uid === me.uid ? t('bounty.youClaimed') : t('bounty.claimed', { name: claim.name || t('common.formerMember') })}</span>
+              {mine && uid !== me.uid ? (
+                <button type="button" className="text-subtle underline-offset-4 hover:text-ink hover:underline" onClick={() => act(() => api.rejectClaim(org.id, bounty.id, uid))}>
+                  {t('bounty.reject')}
+                </button>
+              ) : null}
+            </li>
+          ))}
+          {autoDays !== null ? <li className="text-subtle">{t('bounty.autoPay', { n: autoDays })}</li> : null}
+        </ul>
+      ) : null}
+      {bounty.by !== me.uid && !claimed && !expired ? (
+        <div>
+          <Button variant="quiet" onClick={() => act(() => api.claimBounty(org.id, bounty.id))}>
+            {t('bounty.claim')}
+          </Button>
+        </div>
+      ) : null}
+      {!mine && problem ? <Notice tone="error">{problem}</Notice> : null}
       {mine ? (
         <div className="flex flex-col gap-2">
           {expired ? null : (
             <div className="flex gap-2">
               <div className="min-w-0 flex-1">
-                <Select aria-label={t('bounty.payTo')} value={to} onChange={(event) => setTo(event.target.value)}>
+                <Select aria-label={t('bounty.payTo')} value={payTo} onChange={(event) => setTo(event.target.value)}>
                   <option value="">{t('bounty.choose')}</option>
                   {others.map((member) => (
                     <option key={member.uid} value={member.uid}>
-                      {member.name}
+                      {claimants.has(member.uid) ? `🙋 ${member.name}` : member.name}
                     </option>
                   ))}
                 </Select>
               </div>
               <Button
                 variant="coin"
-                disabled={!to}
+                disabled={!payTo}
                 busy={busy}
                 onClick={async () => {
                   setBusy(true)
-                  setProblem(undefined)
-                  try {
-                    await api.payBounty(org.id, bounty.id, to)
-                  } catch (caught) {
-                    explain(caught)
-                  }
+                  await act(() => api.payBounty(org.id, bounty.id, payTo))
                   setBusy(false)
                 }}
               >
@@ -108,21 +143,14 @@ function BountyRow({ bounty, org, members, me }: { bounty: Bounty; org: Org; mem
               </Button>
             </div>
           )}
-          {problem ? <Notice tone="error">{problem}</Notice> : null}
+          {mine && problem ? <Notice tone="error">{problem}</Notice> : null}
           <div>
             <ConfirmButton
               label={t('bounty.cancel')}
               question={t('bounty.cancelConfirm', { number: bounty.number })}
               confirmLabel={t('bounty.cancel')}
               cancelLabel={t('common.back')}
-              onConfirm={async () => {
-                setProblem(undefined)
-                try {
-                  await api.cancelBounty(org.id, bounty.id)
-                } catch (caught) {
-                  explain(caught)
-                }
-              }}
+              onConfirm={() => act(() => api.cancelBounty(org.id, bounty.id))}
             />
           </div>
         </div>

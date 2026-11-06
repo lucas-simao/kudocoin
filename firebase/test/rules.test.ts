@@ -26,6 +26,7 @@ beforeAll(async () => {
       await setDoc(doc(db, `orgs/${orgId}/seasons/s1`), { board: {} })
       await setDoc(doc(db, `orgs/${orgId}/ledger/e1`), { amount: 1 })
       await setDoc(doc(db, `orgs/${orgId}/bounties/b1`), { amount: 1, status: 'open' })
+      await setDoc(doc(db, `orgs/${orgId}/requests/r1`), { amount: 1, status: 'open', to: 'bruno' })
       await setDoc(doc(db, `orgs/${orgId}/admin/invite`), { token: 'secret' })
       for (const [uid, role] of Object.entries(people)) {
         await setDoc(doc(db, `orgs/${orgId}/members/${uid}`), { uid, role, balance: 0 })
@@ -54,6 +55,7 @@ describe('a member', () => {
     await assertSucceeds(getDoc(doc(db, 'orgs/org-a/seasons/s1')))
     await assertSucceeds(getDocs(query(collection(db, 'orgs/org-a/ledger'), limit(20))))
     await assertSucceeds(getDocs(query(collection(db, 'orgs/org-a/bounties'), where('status', '==', 'open'))))
+    await assertSucceeds(getDocs(query(collection(db, 'orgs/org-a/requests'), where('to', '==', 'bruno'), where('status', '==', 'open'))))
   })
 
   it('reads nothing of another organization', async () => {
@@ -63,6 +65,7 @@ describe('a member', () => {
     await assertFails(getDoc(doc(db, 'orgs/org-b/seasons/s1')))
     await assertFails(getDocs(collection(db, 'orgs/org-b/ledger')))
     await assertFails(getDocs(collection(db, 'orgs/org-b/bounties')))
+    await assertFails(getDocs(collection(db, 'orgs/org-b/requests')))
   })
 
   it('cannot read the invite link unless an admin', async () => {

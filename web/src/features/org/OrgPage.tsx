@@ -20,6 +20,7 @@ import { Link } from '@/lib/router'
 import { startTour, tourSeen } from '../tour/tour'
 import { Bounties } from './Bounties'
 import { GiveForm } from './GiveForm'
+import { Requests } from './Requests'
 
 /** Loads an organization by its address and hands it to `children`, for every screen under /o/<slug>. */
 export function WithOrg({ slug, children }: { slug: string; children: (org: Org) => ReactNode }) {
@@ -123,6 +124,7 @@ function OrgBoard({ org }: { org: Org }) {
             {members && user ? <GiveForm org={org} members={members} myUid={user.uid} left={left} /> : <Spinner label={t('common.loading')} />}
           </Card>
           {members && me ? <Bounties org={org} members={members} me={me} left={left} /> : null}
+          {members && me ? <Requests org={org} members={members} me={me} /> : null}
         </div>
       </div>
 

@@ -96,6 +96,12 @@ export const api = {
     request<{ bountyId: string; number: number; allowanceLeft: number }>('POST', `/api/orgs/${orgId}/bounties`, input),
   payBounty: (orgId: string, bountyId: string, to: string) => request<{ balance: number }>('POST', `/api/orgs/${orgId}/bounties/${bountyId}/pay`, { to }),
   cancelBounty: (orgId: string, bountyId: string) => request<{ refunded: boolean }>('POST', `/api/orgs/${orgId}/bounties/${bountyId}/cancel`),
+  claimBounty: (orgId: string, bountyId: string) => request<unknown>('POST', `/api/orgs/${orgId}/bounties/${bountyId}/claim`),
+  rejectClaim: (orgId: string, bountyId: string, uid: string) => request<unknown>('POST', `/api/orgs/${orgId}/bounties/${bountyId}/reject`, { uid }),
+  askCoins: (orgId: string, input: { to: string; amount: number; reason: string; key: string }) =>
+    request<{ requestId: string; number: number }>('POST', `/api/orgs/${orgId}/requests`, input),
+  answerRequest: (orgId: string, requestId: string, answer: 'pay' | 'decline' | 'cancel') =>
+    request<unknown>('POST', `/api/orgs/${orgId}/requests/${requestId}/${answer}`),
   slackInstall: (orgId: string) => request<{ url: string }>('POST', `/api/orgs/${orgId}/slack/install`),
   slackAnnounce: (orgId: string, announce: boolean) => request<unknown>('PATCH', `/api/orgs/${orgId}/slack`, { announce }),
   slackDisconnect: (orgId: string) => request<unknown>('DELETE', `/api/orgs/${orgId}/slack`),

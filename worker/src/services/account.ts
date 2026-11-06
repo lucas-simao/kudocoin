@@ -71,7 +71,13 @@ export async function deleteAccount(store: Firestore, caller: Caller): Promise<v
 /** Past entries keep their amounts but no longer carry the person's name; the app shows an empty name as "former member". */
 async function renameInLedger(store: Firestore, orgId: string, uid: string): Promise<void> {
   const parent = `orgs/${orgId}`
-  // Their bounties keep the task and amount, without the name.
+  // Their requests and bounties keep the amounts and reasons, without the name.
+  for (const [field, nameField] of [['from', 'fromName'], ['to', 'toName']] as const) {
+    const requests = await store.where(parent, 'requests', field, uid, 200)
+    if (requests.length) {
+      await store.commit(requests.map(({ id }) => ({ path: paths.request(orgId, id), fields: { [nameField]: '' }, mask: [nameField], exists: true })))
+    }
+  }
   const bounties = await store.where(parent, 'bounties', 'by', uid, 200)
   if (bounties.length) {
     await store.commit(bounties.map(({ id }) => ({ path: paths.bounty(orgId, id), fields: { byName: '' }, mask: ['byName'], exists: true })))

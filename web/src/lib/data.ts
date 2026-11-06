@@ -193,8 +193,44 @@ export interface Bounty {
   amount: number
   task: string
   status: 'open' | 'paid' | 'cancelled'
-  /** Its last day to be paid, YYYY-MM-DD. */
+  /** Its last day to be paid, YYYY-MM-DD; a claim keeps it payable after. */
   expiresOn: string
+  /** "I did it", by member (docs/decisions/claims-and-requests.md). */
+  claims?: Record<string, { name: string; at: { toDate(): Date } }>
+  /** With one claim: when it is paid by itself. */
+  autoPayAt?: { toDate(): Date } | null
+}
+
+/** A member asking another for coins (docs/decisions/claims-and-requests.md). */
+export interface CoinRequest {
+  id: string
+  number: number
+  from: string
+  fromName: string
+  to: string
+  toName: string
+  amount: number
+  reason: string
+  status: 'open' | 'paid' | 'declined' | 'cancelled'
+  expiresOn: string
+}
+
+/** Open requests to and from someone. */
+export function useOpenRequests(orgId: string | undefined, uid: string | undefined): { toMe: CoinRequest[]; mine: CoinRequest[] } | undefined {
+  const [requests, setRequests] = useState<{ toMe?: CoinRequest[]; mine?: CoinRequest[] }>({})
+  useEffect(() => {
+    if (!orgId || !uid) return
+    const collectionRef = collection(db, `orgs/${orgId}/requests`)
+    const read = (snapshot: { docs: { id: string; data(): unknown }[] }) =>
+      snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<CoinRequest, 'id'>) })).sort((a, b) => a.number - b.number)
+    const stops = (['to', 'from'] as const).map((field) =>
+      onSnapshot(query(collectionRef, where(field, '==', uid), where('status', '==', 'open')), (snapshot) =>
+        setRequests((current) => ({ ...current, [field === 'to' ? 'toMe' : 'mine']: read(snapshot) })),
+      ),
+    )
+    return () => stops.forEach((stop) => stop())
+  }, [orgId, uid])
+  return requests.toMe && requests.mine ? { toMe: requests.toMe, mine: requests.mine } : undefined
 }
 
 export function useOpenBounties(orgId: string | undefined): Bounty[] | undefined {

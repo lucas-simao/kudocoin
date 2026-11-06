@@ -25,6 +25,11 @@ export type Request =
   | { kind: 'bountyOffer'; amount: number; task: string }
   | { kind: 'bountyPay'; number: number; slackUserId: string }
   | { kind: 'bountyCancel'; number: number }
+  | { kind: 'bountyDone'; number: number }
+  | { kind: 'bountyReject'; number: number; slackUserId: string }
+  | { kind: 'requests' }
+  | { kind: 'requestAsk'; kudos: Kudos }
+  | { kind: 'requestAnswer'; number: number; answer: 'pay' | 'decline' | 'cancel' }
   | { kind: 'unknown' }
 
 // The words are English in the docs and the help, and also understood in Portuguese and Spanish.
@@ -34,6 +39,20 @@ const SHARE = ['share', 'compartilhar', 'compartir']
 const BOUNTIES = ['bounties', 'recompensas']
 const BOUNTY_PAY = /^\s*(?:bounty|recompensa)\s+(?:pay|pagar)\s+#?(\d{1,6})\s+<@([UW][A-Z0-9]{2,20})(?:\|[^>]*)?>\s*$/i
 const BOUNTY_CANCEL = /^\s*(?:bounty|recompensa)\s+(?:cancel|cancelar)\s+#?(\d{1,6})\s*$/i
+const BOUNTY_DONE = /^\s*(?:bounty|recompensa)\s+(?:done|feito|hecho)\s+#?(\d{1,6})\s*$/i
+const BOUNTY_REJECT = /^\s*(?:bounty|recompensa)\s+(?:reject|recusar|rechazar)\s+#?(\d{1,6})\s+<@([UW][A-Z0-9]{2,20})(?:\|[^>]*)?>\s*$/i
+const REQUESTS = ['requests', 'pedidos']
+const REQUEST_ANSWER = /^\s*(?:request|pedido)\s+(pay|pagar|decline|recusar|rechazar|cancel|cancelar)\s+#?(\d{1,6})\s*$/i
+const REQUEST_ASK = /^\s*(?:request|pedido|pedir)\s+(<@[\s\S]*)$/i
+const ANSWERS: Record<string, 'pay' | 'decline' | 'cancel'> = {
+  pay: 'pay',
+  pagar: 'pay',
+  decline: 'decline',
+  recusar: 'decline',
+  rechazar: 'decline',
+  cancel: 'cancel',
+  cancelar: 'cancel',
+}
 const BOUNTY_OFFER = /^\s*(?:bounty|recompensa)\s+(\d{1,6})\s+([\s\S]+)$/i
 
 /** What `/kudos` was asked: nothing or help, the summary (only for you, or shared), or a give. */
@@ -45,6 +64,19 @@ export function parseRequest(text: string): Request {
   }
   // Bounties (docs/decisions/bounties.md): `bounties`, `bounty pay #7 @bruno`, `bounty cancel #7`, `bounty 3 task`.
   if (words.length === 1 && BOUNTIES.includes(words[0])) return { kind: 'bounties' }
+  const done = BOUNTY_DONE.exec(text)
+  if (done) return { kind: 'bountyDone', number: Number(done[1]) }
+  const reject = BOUNTY_REJECT.exec(text)
+  if (reject) return { kind: 'bountyReject', number: Number(reject[1]), slackUserId: reject[2] }
+  // Requests: `requests`, `request pay #3`, `request @bruno 2 reason`.
+  if (words.length === 1 && REQUESTS.includes(words[0])) return { kind: 'requests' }
+  const answer = REQUEST_ANSWER.exec(text)
+  if (answer) return { kind: 'requestAnswer', number: Number(answer[2]), answer: ANSWERS[answer[1].toLowerCase()] }
+  const ask = REQUEST_ASK.exec(text)
+  if (ask) {
+    const kudos = parseKudos(ask[1])
+    return kudos ? { kind: 'requestAsk', kudos } : { kind: 'unknown' }
+  }
   const pay = BOUNTY_PAY.exec(text)
   if (pay) return { kind: 'bountyPay', number: Number(pay[1]), slackUserId: pay[2] }
   const cancel = BOUNTY_CANCEL.exec(text)

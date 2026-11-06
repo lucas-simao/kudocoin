@@ -1,23 +1,20 @@
-// Bounties from Slack (docs/decisions/bounties.md): offer, list, pay and cancel, with the same services as
-// the web app.
+// Bounties from Slack (docs/decisions/bounties.md, claims-and-requests.md): offer, list, claim, pay, reject and
+// cancel, with the same services as the web app.
 import { ApiError } from '../errors'
 import type { Firestore } from '../firestore/client'
 import { as, type OrgDoc, paths, type SlackUserDoc } from '../repositories/documents'
-import { bountyByNumber, cancelBounty, offerBounty, openBounties, payBounty } from '../services/bounties'
+import { bountyByNumber, cancelBounty, claimBounty, offerBounty, openBounties, payBounty, rejectClaim } from '../services/bounties'
 import { sha256 } from '../services/ids'
 import { dateIn } from '../services/rules'
 import type { Command, Reply } from './command'
 import { fill, isSlackError, type SlackMessages } from './messages'
 import type { Request } from './parse'
 import { escape, plainText } from './parse'
+import { daysBetween, mention } from './people'
 
-type BountyRequest = Extract<Request, { kind: 'bounties' | 'bountyOffer' | 'bountyPay' | 'bountyCancel' }>
+type BountyRequest = Extract<Request, { kind: 'bounties' | 'bountyOffer' | 'bountyPay' | 'bountyCancel' | 'bountyDone' | 'bountyReject' }>
 
 const ephemeral = (text: string): Reply => ({ response_type: 'ephemeral', text })
-
-function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
-}
 
 export async function bountyCommand(
   store: Firestore,
@@ -63,6 +60,22 @@ export async function bountyCommand(
 
     const found = await bountyByNumber(store, orgId, request.number)
     if (!found) return ephemeral(fill(words.bountyNotFound, { number: request.number }))
+
+    if (request.kind === 'bountyDone') {
+      await claimBounty(store, orgId, caller, found.id)
+      const vars = { claimant: me, number: request.number, task: escape(found.bounty.task) }
+      if (!org.slack?.announce) return ephemeral(fill(words.bountyClaimedQuiet, vars))
+      // The nudge: the offerer is named, and Slack notifies them when they linked here.
+      const by = await mention(store, command.teamId, found.bounty.by, found.bounty.byName || words.formerMember)
+      return { response_type: 'in_channel', text: fill(words.bountyClaimed, { ...vars, by }) }
+    }
+
+    if (request.kind === 'bountyReject') {
+      const link = as<SlackUserDoc>(await store.get(paths.slackUser(`${command.teamId}_${request.slackUserId}`)))
+      if (!link) return ephemeral(fill(words.receiverNotLinked, { receiver: `<@${request.slackUserId}>` }))
+      await rejectClaim(store, orgId, caller, found.id, link.uid)
+      return ephemeral(fill(words.bountyClaimRejected, { claimant: `<@${request.slackUserId}>`, number: request.number }))
+    }
 
     if (request.kind === 'bountyCancel') {
       const { refunded } = await cancelBounty(store, orgId, caller, found.id)
