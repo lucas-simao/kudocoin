@@ -74,7 +74,10 @@ export const api = {
   createOrg: (input: { name: string; slug: string; settings: Settings; season: { endsOn: string; prize: string } }) =>
     request<{ orgId: string; slug: string }>('POST', '/api/orgs', input),
   resolveSlug: (slug: string) => request<{ orgId: string }>('GET', `/api/slugs/${encodeURIComponent(slug)}`),
-  updateOrg: (orgId: string, input: { name?: string; settings?: Partial<Settings>; season?: { endsOn?: string; prize?: string } }) =>
+  updateOrg: (
+    orgId: string,
+    input: { name?: string; settings?: Partial<Settings>; season?: { endsOn?: string; prize?: string }; sprintWeeks?: number | null },
+  ) =>
     request<unknown>('PATCH', `/api/orgs/${orgId}`, input),
   give: (orgId: string, input: { to: string; amount: number; reason: string; key: string }) =>
     request<{ balance: number; allowanceLeft: number | null }>('POST', `/api/orgs/${orgId}/give`, input),
@@ -87,7 +90,7 @@ export const api = {
   join: (token: string) => request<{ orgId: string; slug: string }>('POST', `/api/join/${token}`),
   setRole: (orgId: string, uid: string, role: Role) => request<unknown>('PUT', `/api/orgs/${orgId}/members/${uid}/role`, { role }),
   removeMember: (orgId: string, uid: string) => request<unknown>('DELETE', `/api/orgs/${orgId}/members/${uid}`),
-  closeSeason: (orgId: string, next: { endsOn: string; prize: string }) =>
+  closeSeason: (orgId: string, next: { endsOn?: string; prize: string }) =>
     request<{ seasonId: string }>('POST', `/api/orgs/${orgId}/seasons/close`, next),
   slackInstall: (orgId: string) => request<{ url: string }>('POST', `/api/orgs/${orgId}/slack/install`),
   slackAnnounce: (orgId: string, announce: boolean) => request<unknown>('PATCH', `/api/orgs/${orgId}/slack`, { announce }),

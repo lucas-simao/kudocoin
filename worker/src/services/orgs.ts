@@ -11,6 +11,7 @@ import {
   toDoc,
   type UserOrgDoc,
 } from '../repositories/documents'
+import { closesAt, parseSprintWeeks } from './cadence'
 import { randomId } from './ids'
 import { checkSlug, dateIn, isDate, type OrgSettings, parseSettings } from './rules'
 
@@ -19,6 +20,7 @@ export interface CreateOrg {
   slug: string
   settings?: Partial<OrgSettings>
   season?: { endsOn?: string; prize?: string }
+  sprintWeeks?: number | null
 }
 
 function cleanName(value: unknown): string {
@@ -66,6 +68,7 @@ export async function createOrg(store: Firestore, caller: Caller, input: CreateO
   const today = dateIn(settings.timezone, now)
   const endsOn = seasonEnd(input.season?.endsOn, today)
   const prize = cleanPrize(input.season?.prize)
+  const sprintWeeks = input.sprintWeeks === undefined ? null : parseSprintWeeks(input.sprintWeeks)
   const orgId = randomId()
   const seasonId = randomId()
 
@@ -81,10 +84,13 @@ export async function createOrg(store: Firestore, caller: Caller, input: CreateO
       inviteHash: null,
       memberCount: 1,
       createdAt: now,
+      sprintWeeks,
+      closesAt: closesAt(endsOn, settings.timezone, sprintWeeks),
     }
     const season: SeasonDoc = {
       number: 1,
       startedAt: now,
+      startsOn: today,
       endsOn,
       prize,
       status: 'open',
@@ -116,6 +122,7 @@ export interface UpdateOrg {
   name?: string
   settings?: Partial<OrgSettings>
   season?: { endsOn?: string; prize?: string }
+  sprintWeeks?: number | null
 }
 
 export async function updateOrg(store: Firestore, orgId: string, input: UpdateOrg): Promise<void> {
@@ -123,6 +130,8 @@ export async function updateOrg(store: Firestore, orgId: string, input: UpdateOr
     const [orgDoc] = await tx.getAll([paths.org(orgId)])
     const org = as<OrgDoc>(orgDoc)
     if (!org) throw new ApiError('not_found')
+    const [seasonDoc] = await tx.getAll([paths.season(orgId, org.seasonId)])
+    const current = as<SeasonDoc>(seasonDoc)
     const writes: Write[] = []
     const fields: Partial<OrgDoc> = {}
     const mask: string[] = []
@@ -134,13 +143,19 @@ export async function updateOrg(store: Firestore, orgId: string, input: UpdateOr
       fields.settings = parseSettings(input.settings, org.settings)
       mask.push('settings')
     }
-    if (mask.length) writes.push({ path: paths.org(orgId), fields: toDoc(fields), mask, exists: true })
+    if (input.sprintWeeks !== undefined) {
+      fields.sprintWeeks = parseSprintWeeks(input.sprintWeeks)
+      mask.push('sprintWeeks')
+    }
+    const timezone = (fields.settings ?? org.settings).timezone
+    let endsOn = current?.endsOn
     if (input.season !== undefined) {
-      const today = dateIn((fields.settings ?? org.settings).timezone, new Date())
+      const today = dateIn(timezone, new Date())
       const season: Partial<SeasonDoc> = {}
       const seasonMask: string[] = []
       if (input.season.endsOn !== undefined) {
         season.endsOn = seasonEnd(input.season.endsOn, today)
+        endsOn = season.endsOn
         seasonMask.push('endsOn')
       }
       if (input.season.prize !== undefined) {
@@ -151,6 +166,12 @@ export async function updateOrg(store: Firestore, orgId: string, input: UpdateOr
         writes.push({ path: paths.season(orgId, org.seasonId), fields: toDoc(season), mask: seasonMask, exists: true })
       }
     }
+    // The time zone, the sprint length or the end date moves when the hourly job closes the season.
+    if (endsOn && (fields.settings || 'sprintWeeks' in fields || input.season?.endsOn !== undefined)) {
+      fields.closesAt = closesAt(endsOn, timezone, 'sprintWeeks' in fields ? fields.sprintWeeks : org.sprintWeeks)
+      mask.push('closesAt')
+    }
+    if (mask.length) writes.push({ path: paths.org(orgId), fields: toDoc(fields), mask, exists: true })
     // A renamed organization renames its entry in each member's list.
     if (fields.name) {
       for (const { id } of await store.list(`orgs/${orgId}/members`)) {

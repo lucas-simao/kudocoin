@@ -97,7 +97,14 @@ export class Firestore {
   }
 
   /** Every document of a collection whose field equals a value. Small collections only. */
-  async where(parentPath: string, collection: string, field: string, value: Plain, limit = 200): Promise<{ id: string; doc: Doc }[]> {
+  async where(
+    parentPath: string,
+    collection: string,
+    field: string,
+    value: Plain,
+    limit = 200,
+    op: 'EQUAL' | 'LESS_THAN_OR_EQUAL' = 'EQUAL',
+  ): Promise<{ id: string; doc: Doc }[]> {
     const parent = parentPath ? `${this.base}/${parentPath}` : this.base
     const rows = await this.call<{ document?: { name: string; fields?: Record<string, FsValue> } }[]>(
       'POST',
@@ -105,7 +112,7 @@ export class Firestore {
       {
         structuredQuery: {
           from: [{ collectionId: collection }],
-          where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: encodeFields({ v: value }).v } },
+          where: { fieldFilter: { field: { fieldPath: field }, op, value: encodeFields({ v: value }).v } },
           limit,
         },
       },

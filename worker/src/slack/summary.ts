@@ -29,14 +29,20 @@ export async function summary(
   if (!season) throw new Error('the open season is missing')
 
   const coin = escape(org.settings.coinName)
-  const date = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(
-    new Date(`${season.endsOn}T12:00:00Z`),
-  )
+  const format = (day: string) =>
+    new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
+  const sprint = Boolean(org.sprintWeeks)
+  const startsOn = season.startsOn ?? dateIn(org.settings.timezone, season.startedAt)
   const rows = standings(season.board ?? {}).filter((row) => row.balance > 0)
 
   const lines = [
-    fill(words.summaryTitle, { org: escape(org.name), n: season.number }),
-    [fill(words.summaryEnds, { date }), season.prize ? fill(words.summaryPrize, { prize: escape(season.prize) }) : '']
+    fill(sprint ? words.summarySprintTitle : words.summaryTitle, { org: escape(org.name), n: season.number }),
+    [
+      sprint
+        ? fill(words.summarySprintDates, { start: format(startsOn), end: format(season.endsOn) })
+        : fill(words.summaryEnds, { date: format(season.endsOn) }),
+      season.prize ? fill(words.summaryPrize, { prize: escape(season.prize) }) : '',
+    ]
       .filter(Boolean)
       .join(' · '),
     '',

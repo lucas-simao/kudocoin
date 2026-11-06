@@ -69,9 +69,19 @@ function OrgBoard({ org }: { org: Org }) {
         <div className="flex flex-col gap-1">
           <Heading as="h1">{org.name}</Heading>
           <p className="text-sm text-subtle">
-            {season ? t('org.seasonNumber', { n: season.number }) : null}
-            {season ? ' · ' : null}
-            {season ? t('org.endsOn', { date: date(season.endsOn) }) : null}
+            {season && org.sprintWeeks ? (
+              <>
+                {t('org.sprintNumber', { n: season.number })}
+                {' · '}
+                {season.startsOn ? t('org.sprintDates', { start: date(season.startsOn), end: date(season.endsOn) }) : t('org.endsOn', { date: date(season.endsOn) })}
+              </>
+            ) : season ? (
+              <>
+                {t('org.seasonNumber', { n: season.number })}
+                {' · '}
+                {t('org.endsOn', { date: date(season.endsOn) })}
+              </>
+            ) : null}
             {' · '}
             {t('org.members', { n: number(org.memberCount) })}
           </p>
@@ -95,7 +105,7 @@ function OrgBoard({ org }: { org: Org }) {
         </div>
       </div>
 
-      {season && today > season.endsOn ? <Notice>{t('org.ended')}</Notice> : null}
+      {season && today > season.endsOn ? <Notice>{t(org.sprintWeeks ? 'org.endedSprint' : 'org.ended')}</Notice> : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <Card className="flex flex-col gap-4" tour="board">
@@ -126,7 +136,9 @@ function OrgBoard({ org }: { org: Org }) {
             {past.map((closed) => (
               <li key={closed.id} className="flex flex-col gap-2">
                 <p className="text-sm font-medium">
-                  {t('org.seasonNumber', { n: closed.number })} · {date(closed.endsOn)}
+                  {closed.startsOn && org.sprintWeeks
+                    ? `${t('org.sprintNumber', { n: closed.number })} · ${t('org.sprintDates', { start: date(closed.startsOn), end: date(closed.endsOn) })}`
+                    : `${t('org.seasonNumber', { n: closed.number })} · ${date(closed.endsOn)}`}
                   {closed.prize ? ` · ${closed.prize}` : ''}
                 </p>
                 <ol className="flex flex-wrap gap-2 text-sm">

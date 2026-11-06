@@ -4,6 +4,11 @@ main = "src/index.ts"
 compatibility_date = "2025-09-01"
 workers_dev = true
 
+# The hourly job that closes sprints (docs/decisions/sprints.md). The end-to-end tests run it through
+# /__scheduled, as wrangler dev offers with --test-scheduled.
+[triggers]
+crons = ["7 * * * *"]
+
 [vars]
 # The Firebase project whose sign-in tokens are accepted and whose Firestore is written.
 FIREBASE_PROJECT_ID = "kudocoin"

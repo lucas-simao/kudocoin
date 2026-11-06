@@ -3,6 +3,7 @@
 import { ApiError } from '../errors'
 import type { Firestore, Write } from '../firestore/client'
 import { as, type BoardRow, type OrgDoc, paths, type SeasonDoc, toDoc } from '../repositories/documents'
+import { closesAt, nextSprint } from './cadence'
 import { randomId } from './ids'
 import { seasonEnd } from './orgs'
 import { dateIn } from './rules'
@@ -23,7 +24,8 @@ export async function closeSeason(
   store: Firestore,
   orgId: string,
   next: { endsOn?: string; prize?: string },
-): Promise<{ seasonId: string }> {
+  options: { auto?: boolean } = {},
+): Promise<{ seasonId: string } | null> {
   return store.transaction(async (tx) => {
     const [orgDoc] = await tx.getAll([paths.org(orgId)])
     const org = as<OrgDoc>(orgDoc)
@@ -33,14 +35,23 @@ export async function closeSeason(
     if (!season) throw new ApiError('internal')
     const now = new Date()
     const today = dateIn(org.settings.timezone, now)
-    // Offered from the last day on, so the group can close it on the day it meets.
-    if (today < season.endsOn) throw new ApiError('season_not_ended', { endsOn: season.endsOn })
+    if (options.auto) {
+      // The hourly job: only what is due. A season already closed has moved closesAt on, so a run twice is a no-op.
+      if (!org.closesAt || org.closesAt.getTime() > now.getTime()) return { writes: [], result: null }
+    } else if (today < season.endsOn) {
+      // Offered from the last day on, so the group can close it on the day it meets.
+      throw new ApiError('season_not_ended', { endsOn: season.endsOn })
+    }
+    // Sprints follow each other without gaps (docs/decisions/sprints.md); by hand, the next one starts today.
+    const weeks = org.sprintWeeks ?? null
+    const dates = weeks ? nextSprint(season.endsOn, weeks, today) : { startsOn: today, endsOn: seasonEnd(next.endsOn, today) }
     const prize = String(next.prize ?? season.prize).trim().slice(0, 200)
     const seasonId = randomId()
     const fresh: SeasonDoc = {
       number: season.number + 1,
       startedAt: now,
-      endsOn: seasonEnd(next.endsOn, today),
+      startsOn: dates.startsOn,
+      endsOn: dates.endsOn,
       prize,
       status: 'open',
       board: Object.fromEntries(
@@ -55,7 +66,12 @@ export async function closeSeason(
         exists: true,
       },
       { path: paths.season(orgId, seasonId), fields: toDoc(fresh), exists: false },
-      { path: paths.org(orgId), fields: { seasonId }, mask: ['seasonId'], exists: true },
+      {
+        path: paths.org(orgId),
+        fields: { seasonId, closesAt: closesAt(dates.endsOn, org.settings.timezone, weeks) },
+        mask: ['seasonId', 'closesAt'],
+        exists: true,
+      },
     ]
     return { writes, result: { seasonId } }
   })
