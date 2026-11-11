@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from 'react'
 import { useSession } from '@/auth/session'
 import { Avatar, Button, Card, Coins, Heading, Notice, Spinner } from '@/components/ui'
+import { LinkedText } from '@/components/LinkedText'
 import { useI18n } from '@/i18n'
 import {
   type Entry,
@@ -109,7 +110,7 @@ function OrgBoard({ org }: { org: Org }) {
 
       {season && today > season.endsOn ? <Notice>{t(org.sprintWeeks ? 'org.endedSprint' : 'org.ended')}</Notice> : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_22rem]">
         <Card className="flex flex-col gap-4" tour="board">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <Heading>{t('org.leaderboard')}</Heading>
@@ -208,7 +209,11 @@ export function EntryList({ entries, org }: { entries: Entry[]; org: Org }) {
         return (
           <li key={entry.id} className="flex flex-col gap-1 py-3">
             <p className="text-[0.9375rem]">{line}</p>
-            {entry.reason ? <p className="text-sm text-muted">“{entry.reason}”</p> : null}
+            {entry.reason ? (
+              <p className="text-sm text-muted">
+                “<LinkedText text={entry.reason} />”
+              </p>
+            ) : null}
             <p className="text-xs text-subtle">{date(entry.day)}</p>
           </li>
         )
