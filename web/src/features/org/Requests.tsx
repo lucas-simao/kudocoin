@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { api, ApiError, entryKey } from '@/api/client'
 import { Button, Card, Field, Heading, Input, Notice, Select, TextArea } from '@/components/ui'
+import { LinkedText } from '@/components/LinkedText'
 import { useI18n } from '@/i18n'
 import { clamp } from '@/lib/amount'
 import { type CoinRequest, type Member, type Org, todayIn, useOpenRequests } from '@/lib/data'
@@ -93,7 +94,7 @@ function RequestRow({ request, org, toMe }: { request: CoinRequest; org: Org; to
           : t('request.youAsked', { name: request.toName || t('common.formerMember'), amount })}
       </p>
       <p className="text-sm text-muted">
-        “{request.reason}” · <span className={expired ? 'text-alert-text' : ''}>{when}</span>
+        “<LinkedText text={request.reason} />” · <span className={expired ? 'text-alert-text' : ''}>{when}</span>
       </p>
       <div className="flex flex-wrap gap-2">
         {toMe ? (

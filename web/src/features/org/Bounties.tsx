@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { api, ApiError, entryKey } from '@/api/client'
 import { Button, Card, ConfirmButton, Field, Heading, Input, Notice, Select, TextArea } from '@/components/ui'
+import { LinkedText } from '@/components/LinkedText'
 import { useI18n } from '@/i18n'
 import { clamp } from '@/lib/amount'
 import { type Bounty, type Member, type Org, todayIn, useOpenBounties } from '@/lib/data'
@@ -80,7 +81,7 @@ function BountyRow({ bounty, org, members, me }: { bounty: Bounty; org: Org; mem
     <li className="flex flex-col gap-3 py-3">
       <div className="flex flex-col gap-0.5">
         <p className="text-[0.9375rem]">
-          <span className="text-subtle tabular">#{bounty.number}</span> {bounty.task}
+          <span className="text-subtle tabular">#{bounty.number}</span> <LinkedText text={bounty.task} />
         </p>
         <p className="text-sm text-muted">
           <span className="font-medium text-coin-text tabular">
